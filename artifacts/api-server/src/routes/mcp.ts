@@ -241,15 +241,15 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
 }
 
 const ANTHROPIC_TOOLS: Anthropic.Messages.Tool[] = [
-  { name: "search_datasets", description: "Search for datasets on data.gouv.fr. IMPORTANT: data.gouv.fr is a French portal — the query MUST be in French (e.g., use 'population Paris' not '파리 인구', 'immobilier' not '부동산'). Try multiple French keyword variations for best results.", input_schema: { type: "object", properties: { query: { type: "string", description: "Search keywords in FRENCH only" }, page_size: { type: "integer", description: "Number of results (default 5, max 20)" } }, required: ["query"] } },
-  { name: "search_dataservices", description: "Search for data services (APIs) on data.gouv.fr. IMPORTANT: query MUST be in French.", input_schema: { type: "object", properties: { query: { type: "string", description: "Search keywords in FRENCH only" }, page_size: { type: "integer" } }, required: ["query"] } },
-  { name: "search_organizations", description: "Search for organizations (publishers) on data.gouv.fr. IMPORTANT: query MUST be in French. Use to find which ministries or agencies publish relevant data.", input_schema: { type: "object", properties: { query: { type: "string", description: "Organization name or type in FRENCH (e.g., 'ministère', 'INSEE', 'météo')" }, page_size: { type: "integer" } }, required: ["query"] } },
-  { name: "get_dataset_info", description: "Get detailed information about a specific dataset including all its resources.", input_schema: { type: "object", properties: { dataset_id: { type: "string", description: "Dataset ID from search results" } }, required: ["dataset_id"] } },
-  { name: "list_dataset_resources", description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, page_size: { type: "integer" } }, required: ["dataset_id"] } },
-  { name: "get_resource_info", description: "Get details about a specific resource file including format, size, URL, schema.", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, resource_id: { type: "string" } }, required: ["dataset_id", "resource_id"] } },
-  { name: "query_resource_data", description: "Query tabular data (CSV/XLS) from a resource. Use for exploring actual data values.", input_schema: { type: "object", properties: { resource_id: { type: "string" }, limit: { type: "integer" } }, required: ["resource_id"] } },
+  { name: "search_datasets", description: "Search for datasets on data.gouv.fr by keyword.", input_schema: { type: "object", properties: { query: { type: "string" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "search_dataservices", description: "Search for data services (APIs) on data.gouv.fr.", input_schema: { type: "object", properties: { query: { type: "string" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "search_organizations", description: "Search for organizations (publishers) on data.gouv.fr.", input_schema: { type: "object", properties: { query: { type: "string" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "get_dataset_info", description: "Get detailed information about a specific dataset.", input_schema: { type: "object", properties: { dataset_id: { type: "string" } }, required: ["dataset_id"] } },
+  { name: "list_dataset_resources", description: "List resource files in a dataset.", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, page_size: { type: "integer" } }, required: ["dataset_id"] } },
+  { name: "get_resource_info", description: "Get details about a specific resource file.", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, resource_id: { type: "string" } }, required: ["dataset_id", "resource_id"] } },
+  { name: "query_resource_data", description: "Query tabular data from a resource.", input_schema: { type: "object", properties: { resource_id: { type: "string" }, limit: { type: "integer" } }, required: ["resource_id"] } },
   { name: "get_dataservice_info", description: "Get details about a specific API data service.", input_schema: { type: "object", properties: { dataservice_id: { type: "string" } }, required: ["dataservice_id"] } },
-  { name: "get_metrics", description: "Get overall portal statistics and dataset counts.", input_schema: { type: "object", properties: {}, required: [] } },
+  { name: "get_metrics", description: "Get overall portal statistics.", input_schema: { type: "object", properties: {}, required: [] } },
 ];
 
 router.get("/mcp/tools", (_req, res) => {
@@ -328,23 +328,8 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  const systemPrompt = `You are a research assistant helping Korean policy makers explore France's open data portal (data.gouv.fr).
-
-CRITICAL: data.gouv.fr is a French-language portal. Always search with French keywords only — never Korean or English.
-Key translations: 인구→population, 부동산→immobilier, 교통→transport, 환경→environnement, 보건→santé, 예산→budget, 범죄→criminalité, 교육→éducation, 에너지→énergie, 농업→agriculture
-
-Available tools:
-- search_datasets / search_dataservices / search_organizations: search with French keywords
-- get_dataset_info / list_dataset_resources / get_resource_info / query_resource_data: explore datasets and files
-- get_dataservice_info: explore API services
-- get_metrics: portal statistics
-
-Approach:
-1. TOOL SELECTION — choose the right tools and French keywords for the question
-2. EXPLORATION — call tools iteratively; use search results to guide deeper lookups (get_dataset_info, list_dataset_resources, query_resource_data)
-3. ANALYSIS — synthesize findings and write a comprehensive response in Korean
-
-Output the final response in Korean.`;
+  const systemPrompt = `Please understand the user's question and respond using the provided MCP tool.
+Please output the response in Korean.`;
 
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [
