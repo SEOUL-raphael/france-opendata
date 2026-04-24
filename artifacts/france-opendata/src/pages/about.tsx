@@ -3,7 +3,6 @@ import {
   Globe,
   FileCheck,
   Server,
-  ArrowRight,
   Quote,
   ShieldCheck,
   ExternalLink,
@@ -13,6 +12,18 @@ import {
   MapPin,
   GraduationCap,
   HeartPulse,
+  Code2,
+  BookOpen,
+  Users,
+  Scale,
+  Cpu,
+  Database,
+  CheckCircle,
+  ArrowUpRight,
+  Layers,
+  GitBranch,
+  FileJson,
+  Network,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -205,6 +216,116 @@ const ALL_CATEGORIES: CategoryKey[] = [
   "보건",
 ];
 
+const GUIDES = [
+  {
+    group: "데이터 생산자",
+    groupIcon: Database,
+    groupColor: "text-blue-600 dark:text-blue-400",
+    groupBg: "bg-blue-50 dark:bg-blue-950/20",
+    groupBorder: "border-blue-200 dark:border-blue-800",
+    items: [
+      {
+        title: "data.gouv.fr에 데이터 게시하기",
+        titleFr: "Publier des données sur data.gouv.fr",
+        desc: "계정 생성부터 조직 등록, 데이터셋·리소스 게시, 메타데이터 작성, 라이선스 선택까지 공공데이터 게시의 전 과정을 단계별로 안내합니다.",
+        tags: ["데이터셋", "리소스", "메타데이터"],
+        url: "https://guides.data.gouv.fr/guides/producteurs/publier-des-donnees-sur-data.gouv.fr",
+      },
+      {
+        title: "데이터 품질 개선",
+        titleFr: "Améliorer la qualité des données",
+        desc: "파일 형식(CSV·JSON·Parquet), 인코딩, 날짜 표준화, 결측치 처리 등 데이터 품질을 높이기 위한 실무 지침을 제공합니다. schema.data.gouv.fr 표준 스키마 연동 방법도 포함합니다.",
+        tags: ["CSV", "품질", "스키마"],
+        url: "https://guides.data.gouv.fr/guides/producteurs/ameliorer-la-qualite-des-donnees",
+      },
+      {
+        title: "데이터 스키마 활용",
+        titleFr: "Utiliser les schémas de données",
+        desc: "공통 지역 데이터 기반(Socle Commun des Données Locales) 및 schema.data.gouv.fr에서 제공하는 검증된 표준 스키마를 채택해 데이터 상호운용성을 높이는 방법을 설명합니다.",
+        tags: ["스키마", "표준화", "상호운용성"],
+        url: "https://guides.data.gouv.fr/guides/producteurs/utiliser-les-schemas-de-donnees",
+      },
+    ],
+  },
+  {
+    group: "데이터 활용자",
+    groupIcon: Code2,
+    groupColor: "text-green-700 dark:text-green-400",
+    groupBg: "bg-green-50 dark:bg-green-950/20",
+    groupBorder: "border-green-200 dark:border-green-800",
+    items: [
+      {
+        title: "data.gouv.fr API 활용하기",
+        titleFr: "Utiliser l'API de data.gouv.fr",
+        desc: "REST API 엔드포인트 구조, 인증 방식, 페이지네이션, 데이터셋·리소스·조직 검색 쿼리 예제를 상세히 제공합니다. OpenAPI(Swagger) 문서 기반으로 모든 엔드포인트를 직접 테스트할 수 있습니다.",
+        tags: ["REST API", "OpenAPI", "JSON"],
+        url: "https://guides.data.gouv.fr/guides/reutilisateurs/utiliser-lapi-de-data.gouv.fr",
+      },
+      {
+        title: "데이터셋 탐색 및 다운로드",
+        titleFr: "Exploiter les données de data.gouv.fr",
+        desc: "포털 검색 필터, 태그·조직·라이선스별 필터링, 리소스 미리보기, 대용량 파일 다운로드 최적화, 자동 업데이트 알림 구독 방법을 안내합니다.",
+        tags: ["검색", "다운로드", "필터"],
+        url: "https://guides.data.gouv.fr/guides/reutilisateurs/exploiter-les-donnees",
+      },
+      {
+        title: "MCP로 AI 에이전트 연동하기",
+        titleFr: "Connecter un agent IA via MCP",
+        desc: "data.gouv.fr의 MCP(Model Context Protocol) 서버 엔드포인트를 통해 LLM 에이전트가 공공데이터를 직접 검색·조회하는 방법을 설명합니다. Claude, GPT-4, Mistral 등과의 연동 예제 포함.",
+        tags: ["MCP", "AI", "LLM"],
+        url: "https://guides.data.gouv.fr/guides/reutilisateurs/connecter-un-agent-ia-via-mcp",
+        highlight: true,
+      },
+    ],
+  },
+  {
+    group: "법적·라이선스",
+    groupIcon: Scale,
+    groupColor: "text-purple-600 dark:text-purple-400",
+    groupBg: "bg-purple-50 dark:bg-purple-950/20",
+    groupBorder: "border-purple-200 dark:border-purple-800",
+    items: [
+      {
+        title: "라이선스 선택 가이드",
+        titleFr: "Choisir une licence",
+        desc: "Licence Ouverte(Etalab), ODbL, Creative Commons 등 주요 오픈데이터 라이선스의 허용 범위·제약 조건·상업적 이용 가능 여부를 비교합니다. 공공기관 의무 라이선스 규정도 안내합니다.",
+        tags: ["라이선스", "저작권", "재사용"],
+        url: "https://guides.data.gouv.fr/guides/juridique/choisir-une-licence",
+      },
+      {
+        title: "개인정보 처리 및 익명화",
+        titleFr: "Données personnelles et anonymisation",
+        desc: "RGPD(EU 개인정보보호법) 준수를 위한 데이터 게시 전 체크리스트, k-익명성·차등 프라이버시 등 익명화 기법, CNIL(프랑스 개인정보보호위원회) 가이드라인을 정리합니다.",
+        tags: ["RGPD", "익명화", "CNIL"],
+        url: "https://guides.data.gouv.fr/guides/juridique/donnees-personnelles",
+      },
+    ],
+  },
+  {
+    group: "플랫폼 관리자",
+    groupIcon: Users,
+    groupColor: "text-orange-600 dark:text-orange-400",
+    groupBg: "bg-orange-50 dark:bg-orange-950/20",
+    groupBorder: "border-orange-200 dark:border-orange-800",
+    items: [
+      {
+        title: "조직 관리하기",
+        titleFr: "Gérer une organisation",
+        desc: "조직(기관) 프로필 생성, 구성원 초대·권한 관리, 데이터셋 소유권 이전, 조직 배지(인증) 신청 절차를 안내합니다. 공공기관 전용 인증 배지 획득 방법도 포함합니다.",
+        tags: ["조직", "권한", "인증"],
+        url: "https://guides.data.gouv.fr/guides/administrateurs/gerer-une-organisation",
+      },
+      {
+        title: "재사용 사례(Réutilisation) 등록",
+        titleFr: "Référencer une réutilisation",
+        desc: "공공데이터를 활용해 만든 앱·분석·시각화·보고서를 포털에 등록하는 방법을 설명합니다. 재사용 사례 등록은 데이터 공급자에게 피드백을 전달하고 커뮤니티 가시성을 높이는 역할을 합니다.",
+        tags: ["재사용", "커뮤니티", "등록"],
+        url: "https://guides.data.gouv.fr/guides/administrateurs/referencer-une-reutilisation",
+      },
+    ],
+  },
+];
+
 function UseCaseCard({
   item,
   categoryColor,
@@ -257,6 +378,51 @@ function UseCaseCard({
   );
 }
 
+const TECH_FEATURES = [
+  {
+    icon: Network,
+    label: "API 우선 설계",
+    desc: "모든 데이터셋과 메타데이터는 REST API(api.data.gouv.fr/api/1)로 완전히 접근 가능합니다. Swagger/OpenAPI 문서가 공개되어 있으며, 실시간 검색·다운로드 URL 생성·조직 정보 조회 등을 프로그래밍 방식으로 처리할 수 있습니다.",
+    highlight: false,
+    tag: "REST · OpenAPI · JSON",
+  },
+  {
+    icon: GitBranch,
+    label: "완전 오픈소스 플랫폼",
+    desc: "포털을 구동하는 핵심 엔진 udata는 GNU AGPL 라이선스로 GitHub에 완전 공개되어 있습니다(github.com/opendatateam/udata). 누구든 동일한 플랫폼을 자국에 배포하거나 기능을 기여할 수 있으며, 실제로 룩셈부르크·모로코 등 여러 국가가 udata를 자국 공공데이터 포털로 채택했습니다.",
+    highlight: false,
+    tag: "GNU AGPL · udata",
+  },
+  {
+    icon: FileJson,
+    label: "데이터 스키마 표준화",
+    desc: "schema.data.gouv.fr을 통해 공통 데이터 구조(스키마)를 중앙 관리합니다. 지자체 예산, 주차장, 도로 등 수십 개 도메인의 표준 스키마가 정의되어 있으며, 데이터 게시 시 자동 유효성 검증(Validation API)이 적용됩니다. 이를 통해 여러 기관의 데이터를 손쉽게 병합·분석할 수 있습니다.",
+    highlight: false,
+    tag: "schema.data.gouv.fr · 유효성 검증",
+  },
+  {
+    icon: Users,
+    label: "커뮤니티 개방 기여",
+    desc: "계정을 등록한 누구나(시민, 기업, 연구자, NGO 등) 데이터셋을 게시하고 공유할 수 있습니다. 다만 실제 '공공기관 인증 배지(certified)'는 공공기관 계정에만 부여됩니다. 또한 각 데이터셋에 '토론(Discussion)' 기능이 있어 데이터 오류 신고·개선 요청·활용 공유가 가능하며, 자신의 활용 사례를 '재사용(Réutilisation)'으로 등록해 데이터 공급자에게 피드백을 전달할 수 있습니다.",
+    highlight: false,
+    tag: "커뮤니티 · 토론 · Réutilisation",
+  },
+  {
+    icon: Layers,
+    label: "연계 특화 포털 생태계",
+    desc: "data.gouv.fr 단일 포털 외에 교통(transport.data.gouv.fr), 주소(adresse.data.gouv.fr), 지리정보(geo.data.gouv.fr), 기업정보(annuaire-entreprises.data.gouv.fr) 등 도메인별 특화 포털이 별도 운영됩니다. 각 포털은 동일한 API 인프라를 공유하며 데이터를 상호 참조합니다.",
+    highlight: false,
+    tag: "도메인별 포털 · 연계 API",
+  },
+  {
+    icon: Cpu,
+    label: "AI 에이전트 연동 (MCP)",
+    desc: "2024년 말부터 Model Context Protocol(MCP) 서버(mcp.data.gouv.fr/mcp)를 운영해 LLM 및 AI 에이전트가 공공데이터를 직접 검색·조회·분석할 수 있는 기반을 갖추었습니다. search_datasets, get_dataset_info, query_resource_data 등 9개 표준 도구를 JSON-RPC 2.0 방식으로 제공합니다.",
+    highlight: true,
+    tag: "MCP · JSON-RPC · LLM 연동",
+  },
+];
+
 export default function About() {
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-8 py-10">
@@ -274,6 +440,7 @@ export default function About() {
         <TabsList className="mb-8 flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">소개</TabsTrigger>
           <TabsTrigger value="usecases">활용 사례</TabsTrigger>
+          <TabsTrigger value="guides">가이드</TabsTrigger>
         </TabsList>
 
         {/* ── Overview Tab ─────────────────────────────── */}
@@ -340,7 +507,7 @@ export default function About() {
             </div>
           </section>
 
-          {/* Section 3 */}
+          {/* Section 3 — enhanced */}
           <section>
             <div className="flex items-center gap-3 mb-6">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -349,70 +516,39 @@ export default function About() {
               <h2 className="text-2xl font-bold">3. 주요 기술적 특징</h2>
             </div>
             <div className="space-y-3">
-              {[
-                {
-                  label: "API 우선",
-                  desc: "데이터를 파일로만 다운로드하는 것을 넘어, 시스템 간 실시간 연동이 가능하도록 API 서비스를 적극적으로 제공합니다.",
-                },
-                {
-                  label: "시민 참여",
-                  desc: "정부 기관뿐만 아니라 일반 시민, NGO, 기업도 유용한 공공데이터를 포털에 등록하고 공유할 수 있는 개방형 플랫폼 아키텍처를 채택했습니다.",
-                },
-                {
-                  label: "AI 통합",
-                  desc: "최신 기술 트렌드에 맞춰 MCP(Model Context Protocol) 서버를 도입하여 LLM 및 AI 에이전트가 공공데이터에 직접 접근하고 분석할 수 있는 기반을 마련했습니다.",
-                  highlight: true,
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`flex gap-4 p-4 border rounded-lg ${item.highlight ? "border-primary bg-primary/5" : "bg-card"}`}
-                >
-                  <div className="font-bold text-primary w-20 shrink-0 text-sm">{item.label}</div>
-                  <div className="text-muted-foreground text-sm flex-1">{item.desc}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Section 4 */}
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <ArrowRight className="h-5 w-5" />
-              </div>
-              <h2 className="text-2xl font-bold">4. 한국 시사점: data.go.kr과의 비교</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm text-left">
-                <thead>
-                  <tr className="bg-muted text-muted-foreground border-b">
-                    <th className="p-4 font-semibold w-1/4">구분</th>
-                    <th className="p-4 font-semibold">프랑스 (data.gouv.fr)</th>
-                    <th className="p-4 font-semibold">대한민국 (data.go.kr)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y border-b">
-                  {[
-                    ["기본 철학", "법적 의무화에 기반한 오픈 바이 디폴트", "신청 기반 개방 및 점진적 사전 개방 확대"],
-                    ["운영 체계", "총리실 직속 강력한 전담 조직 (Etalab) 중심", "행정안전부-한국지능정보사회진흥원(NIA) 협력"],
-                    ["데이터 주체", "정부 + 민간 시민 공동 기여 (크라우드소싱)", "공공기관 및 지자체 중심의 단방향 제공"],
-                    ["기술 생태계", "자체 오픈소스 개발, API 우선, AI 연동(MCP)", "강력한 오픈API 허브 기능, 표준화된 메타데이터"],
-                  ].map(([label, fr, kr]) => (
-                    <tr key={label}>
-                      <td className="p-4 font-medium bg-muted/30">{label}</td>
-                      <td className="p-4">{fr}</td>
-                      <td className="p-4">{kr}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-5 p-5 bg-muted rounded-lg text-sm text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">시사점:</strong> 한국의 공공데이터 포털은 방대한
-              데이터 양과 안정적인 인프라 측면에서 세계적 수준입니다. 향후 프랑스의 모델을 참고하여
-              ①시민과 민간 기업이 데이터를 생산하고 공유하는 생태계 구축, ②유연한 라이선스 적용,
-              ③AI 에이전트 시대에 대비한 기계 가독성 및 MCP 지원 강화가 필요합니다.
+              {TECH_FEATURES.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.label}
+                    className={`flex gap-4 p-4 border rounded-lg transition-colors ${
+                      item.highlight
+                        ? "border-primary bg-primary/5"
+                        : "bg-card hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="shrink-0 mt-0.5">
+                      <div className={`p-2 rounded-lg ${item.highlight ? "bg-primary/10" : "bg-muted"}`}>
+                        <Icon className={`h-4 w-4 ${item.highlight ? "text-primary" : "text-muted-foreground"}`} />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className={`font-semibold text-sm ${item.highlight ? "text-primary" : "text-foreground"}`}>
+                          {item.label}
+                        </span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-mono">
+                          {item.tag}
+                        </span>
+                        {item.highlight && (
+                          <Badge className="text-xs" variant="default">신기능</Badge>
+                        )}
+                      </div>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </TabsContent>
@@ -450,16 +586,13 @@ export default function About() {
               ))}
             </TabsList>
 
-            {/* 전체 탭 */}
             <TabsContent value="전체">
               <div className="space-y-8">
                 {USE_CASES.map((cat) => {
                   const Icon = cat.icon;
                   return (
                     <div key={cat.category}>
-                      <h3
-                        className={`flex items-center gap-2 text-base font-semibold mb-4 ${cat.color}`}
-                      >
+                      <h3 className={`flex items-center gap-2 text-base font-semibold mb-4 ${cat.color}`}>
                         <Icon className="h-4 w-4" />
                         {cat.category}
                       </h3>
@@ -480,7 +613,6 @@ export default function About() {
               </div>
             </TabsContent>
 
-            {/* 카테고리별 탭 */}
             {USE_CASES.map((cat) => {
               const Icon = cat.icon;
               return (
@@ -504,6 +636,139 @@ export default function About() {
               );
             })}
           </Tabs>
+        </TabsContent>
+
+        {/* ── Guides Tab ───────────────────────────────── */}
+        <TabsContent value="guides">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-xl font-semibold mb-1 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  공식 가이드 (guides.data.gouv.fr)
+                </h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  Etalab이 공식 제공하는 가이드를 한국어로 번역·요약했습니다.
+                  각 카드의 링크를 클릭하면 프랑스어 원문 가이드로 이동합니다.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" asChild className="gap-1.5 shrink-0">
+                <a
+                  href="https://guides.data.gouv.fr/guides"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  원문 사이트 열기
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            </div>
+
+            {/* Overview window */}
+            <div className="mt-5 rounded-xl border bg-gradient-to-br from-primary/5 to-background overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/60 border-b">
+                <span className="h-3 w-3 rounded-full bg-red-400" />
+                <span className="h-3 w-3 rounded-full bg-yellow-400" />
+                <span className="h-3 w-3 rounded-full bg-green-400" />
+                <span className="ml-3 text-xs text-muted-foreground font-mono">
+                  guides.data.gouv.fr/guides
+                </span>
+                <a
+                  href="https://guides.data.gouv.fr/guides"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto text-xs text-primary flex items-center gap-1 hover:underline"
+                >
+                  원문 보기 <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {GUIDES.map((group) => {
+                  const Icon = group.groupIcon;
+                  return (
+                    <div
+                      key={group.group}
+                      className={`rounded-lg border p-3 ${group.groupBg} ${group.groupBorder} text-center`}
+                    >
+                      <Icon className={`h-5 w-5 mx-auto mb-1.5 ${group.groupColor}`} />
+                      <p className="text-xs font-semibold text-foreground">{group.group}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{group.items.length}개 가이드</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Guide groups */}
+          <div className="space-y-8">
+            {GUIDES.map((group) => {
+              const GroupIcon = group.groupIcon;
+              return (
+                <div key={group.group}>
+                  <div className={`flex items-center gap-2 mb-4`}>
+                    <GroupIcon className={`h-5 w-5 ${group.groupColor}`} />
+                    <h3 className={`font-semibold text-lg ${group.groupColor}`}>{group.group}</h3>
+                    <Badge variant="outline" className="text-xs ml-1">{group.items.length}개</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {group.items.map((guide) => (
+                      <a
+                        key={guide.titleFr}
+                        href={guide.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`group flex flex-col rounded-xl border p-4 transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                          guide.highlight
+                            ? `${group.groupBorder} ${group.groupBg}`
+                            : "bg-card border-border hover:border-primary/30"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm leading-snug text-foreground group-hover:text-primary transition-colors">
+                              {guide.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground italic mt-0.5">
+                              {guide.titleFr}
+                            </p>
+                          </div>
+                          <ArrowUpRight className={`h-4 w-4 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${group.groupColor}`} />
+                        </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                          {guide.desc}
+                        </p>
+
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          {guide.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs bg-muted px-1.5 py-0.5 rounded-sm font-mono text-muted-foreground"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {guide.highlight && (
+                            <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium ml-auto">
+                              신기능
+                            </span>
+                          )}
+                        </div>
+
+                        <div className={`mt-3 pt-3 border-t flex items-center gap-1 text-xs ${group.groupColor} font-medium`}>
+                          <CheckCircle className="h-3 w-3" />
+                          guides.data.gouv.fr 공식 가이드
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
