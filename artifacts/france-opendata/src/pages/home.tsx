@@ -676,7 +676,7 @@ export default function Home() {
                         )}
                       </div>
                       <CardDescription>
-                        GPT-4.1 Mini (도구) + MiniMax M2.7 (분석) · 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
+                        MiniMax M2.7 추론 · 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

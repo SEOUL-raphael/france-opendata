@@ -1,6 +1,5 @@
 import { Router, type IRouter } from "express";
 import axios from "axios";
-import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { rateLimit } from "express-rate-limit";
 
@@ -16,18 +15,12 @@ const mcpRateLimit = rateLimit({
 
 const MCP_ENDPOINT = "https://mcp.data.gouv.fr/mcp";
 const DATAGOUV_BASE_URL = "https://www.data.gouv.fr/api/1";
-const OPENAI_MODEL = "gpt-4.1-mini";
 const MINIMAX_MODEL = "claude-opus-4-5";
 
-// OpenAI client via Replit AI Integrations proxy (tool calls)
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
-
-// MiniMax client via Anthropic-compatible endpoint (reasoning synthesis)
-function getMinimaxClient(): Anthropic | null {
-  if (!process.env.MINIMAX_API_KEY) return null;
+function getMinimaxClient(): Anthropic {
+  if (!process.env.MINIMAX_API_KEY) {
+    throw new Error("MINIMAX_API_KEY가 설정되지 않았습니다.");
+  }
   return new Anthropic({
     baseURL: "https://api.minimax.io/anthropic",
     apiKey: process.env.MINIMAX_API_KEY,
@@ -139,7 +132,10 @@ async function callMcpTool(name: string, args: Record<string, unknown>): Promise
       }
     );
 
-    const parsed = parseMcpSseResponse(res.data as string) as { result?: { content?: Array<{ text?: string; type?: string }>; isError?: boolean }; error?: { message?: string } } | null;
+    const parsed = parseMcpSseResponse(res.data as string) as {
+      result?: { content?: Array<{ text?: string; type?: string }>; isError?: boolean };
+      error?: { message?: string };
+    } | null;
 
     if (parsed?.result && !parsed.result.isError) {
       const content = parsed.result.content;
@@ -231,117 +227,93 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
   }
 }
 
-const OPENAI_TOOL_DEFS: OpenAI.ChatCompletionTool[] = [
+const ANTHROPIC_TOOLS: Anthropic.Messages.Tool[] = [
   {
-    type: "function",
-    function: {
-      name: "search_datasets",
-      description: "Search for datasets on data.gouv.fr by keyword. Returns titles, organizations, tags, and resource counts.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query in French or English for best results" },
-          page_size: { type: "integer", description: "Number of results (default 5, max 20)" },
-        },
-        required: ["query"],
+    name: "search_datasets",
+    description: "Search for datasets on data.gouv.fr by keyword. Returns titles, organizations, tags, and resource counts.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query in French or English for best results" },
+        page_size: { type: "integer", description: "Number of results (default 5, max 20)" },
       },
+      required: ["query"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "search_dataservices",
-      description: "Search for data services (APIs) on data.gouv.fr.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string" },
-          page_size: { type: "integer" },
-        },
-        required: ["query"],
+    name: "search_dataservices",
+    description: "Search for data services (APIs) on data.gouv.fr.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        page_size: { type: "integer" },
       },
+      required: ["query"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "get_dataset_info",
-      description: "Get detailed information about a specific dataset including all its resources.",
-      parameters: {
-        type: "object",
-        properties: {
-          dataset_id: { type: "string", description: "Dataset ID from search results" },
-        },
-        required: ["dataset_id"],
+    name: "get_dataset_info",
+    description: "Get detailed information about a specific dataset including all its resources.",
+    input_schema: {
+      type: "object",
+      properties: {
+        dataset_id: { type: "string", description: "Dataset ID from search results" },
       },
+      required: ["dataset_id"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "list_dataset_resources",
-      description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).",
-      parameters: {
-        type: "object",
-        properties: {
-          dataset_id: { type: "string" },
-          page_size: { type: "integer" },
-        },
-        required: ["dataset_id"],
+    name: "list_dataset_resources",
+    description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).",
+    input_schema: {
+      type: "object",
+      properties: {
+        dataset_id: { type: "string" },
+        page_size: { type: "integer" },
       },
+      required: ["dataset_id"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "get_resource_info",
-      description: "Get details about a specific resource file including format, size, URL, schema.",
-      parameters: {
-        type: "object",
-        properties: {
-          dataset_id: { type: "string" },
-          resource_id: { type: "string" },
-        },
-        required: ["dataset_id", "resource_id"],
+    name: "get_resource_info",
+    description: "Get details about a specific resource file including format, size, URL, schema.",
+    input_schema: {
+      type: "object",
+      properties: {
+        dataset_id: { type: "string" },
+        resource_id: { type: "string" },
       },
+      required: ["dataset_id", "resource_id"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "query_resource_data",
-      description: "Query tabular data (CSV/XLS) from a resource. Use for exploring actual data values.",
-      parameters: {
-        type: "object",
-        properties: {
-          resource_id: { type: "string" },
-          limit: { type: "integer" },
-        },
-        required: ["resource_id"],
+    name: "query_resource_data",
+    description: "Query tabular data (CSV/XLS) from a resource. Use for exploring actual data values.",
+    input_schema: {
+      type: "object",
+      properties: {
+        resource_id: { type: "string" },
+        limit: { type: "integer" },
       },
+      required: ["resource_id"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "get_dataservice_info",
-      description: "Get details about a specific API data service.",
-      parameters: {
-        type: "object",
-        properties: {
-          dataservice_id: { type: "string" },
-        },
-        required: ["dataservice_id"],
+    name: "get_dataservice_info",
+    description: "Get details about a specific API data service.",
+    input_schema: {
+      type: "object",
+      properties: {
+        dataservice_id: { type: "string" },
       },
+      required: ["dataservice_id"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "get_metrics",
-      description: "Get overall portal statistics (total datasets, organizations, reuses counts).",
-      parameters: { type: "object", properties: {}, required: [] },
-    },
+    name: "get_metrics",
+    description: "Get overall portal statistics (total datasets, organizations, reuses counts).",
+    input_schema: { type: "object", properties: {}, required: [] },
   },
 ];
 
@@ -349,8 +321,7 @@ router.get("/mcp/tools", (_req, res) => {
   const minimaxConfigured = !!process.env.MINIMAX_API_KEY;
   res.json({
     tools: MCP_TOOLS_META,
-    model: OPENAI_MODEL,
-    synthesisModel: minimaxConfigured ? "MiniMax-M2.7" : OPENAI_MODEL,
+    model: "MiniMax-M2.7",
     minimaxEnabled: minimaxConfigured,
     mcpEndpoint: MCP_ENDPOINT,
     status: "active",
@@ -382,17 +353,14 @@ router.get("/mcp/health", async (_req, res) => {
     mcpOk = !!parsed?.result;
   }
 
-  const aiOk = !!(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
   const minimaxOk = !!process.env.MINIMAX_API_KEY;
 
   res.json({
-    status: datagouv.status === "fulfilled" && mcpOk && aiOk ? "ok" : "degraded",
+    status: datagouv.status === "fulfilled" && mcpOk && minimaxOk ? "ok" : "degraded",
     datagouv: datagouv.status === "fulfilled" ? "ok" : "unreachable",
     mcp: mcpOk ? "ok" : "unreachable",
-    openai: aiOk ? "configured" : "missing",
     minimax: minimaxOk ? "configured" : "missing",
-    model: OPENAI_MODEL,
-    synthesisModel: minimaxOk ? "MiniMax-M2.7" : OPENAI_MODEL,
+    model: "MiniMax-M2.7",
     mcpEndpoint: MCP_ENDPOINT,
   });
 });
@@ -407,13 +375,13 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
     res.status(400).json({ error: "query가 너무 깁니다. 500자 이내로 입력하세요." });
     return;
   }
-  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-    res.status(500).json({ error: "AI API가 설정되지 않았습니다." });
+  if (!process.env.MINIMAX_API_KEY) {
+    res.status(500).json({ error: "MiniMax API 키가 설정되지 않았습니다." });
     return;
   }
 
   const query = rawQuery.trim();
-  const minimaxClient = getMinimaxClient();
+  const minimax = getMinimaxClient();
 
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-store");
@@ -434,123 +402,121 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
 - 마크다운 형식으로 구조화된 분석 제공
 - 실무적이고 구체적인 내용 포함
 - 발견한 데이터셋의 ID와 제목을 명시
-- 바로 활용 가능한 리소스(표·CSV)가 있으면 강조`;
+- 바로 활용 가능한 리소스(표·CSV)가 있으면 강조
+- 한국 공공데이터 정책과의 비교 관점 포함`;
 
-  const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
+  type AnthropicMessage = Anthropic.Messages.MessageParam;
+  const messages: AnthropicMessage[] = [
     { role: "user", content: query },
   ];
 
-  // Collect tool results for synthesis prompt
-  const toolResultSummaries: string[] = [];
-
   try {
-    send("status", { step: "searching", message: "MCP 도구로 데이터 수집 중..." });
-
-    const MAX_LOOPS = 6;
+    const MAX_LOOPS = 8;
     let loops = 0;
     let toolCallCount = 0;
+    let thinkingStarted = false;
 
-    // Phase 1: Agentic tool-call loop using OpenAI (reliable tool_calls support)
+    send("status", { step: "searching", message: "MiniMax M2.7 추론 및 데이터 수집 중..." });
+
+    // Agentic loop: MiniMax reasons, calls tools, reasons again, produces final answer
     while (loops < MAX_LOOPS) {
       loops++;
 
-      const response = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
-        messages,
-        tools: OPENAI_TOOL_DEFS,
-        tool_choice: loops >= MAX_LOOPS ? "none" : "auto",
-        max_completion_tokens: 4096,
-      });
-
-      const choice = response.choices[0];
-      if (!choice?.message) break;
-
-      const assistantMsg = choice.message;
-      messages.push(assistantMsg);
-
-      if (!assistantMsg.tool_calls || assistantMsg.tool_calls.length === 0) {
-        break;
-      }
-
-      for (const toolCall of assistantMsg.tool_calls) {
-        toolCallCount++;
-        const toolName = toolCall.function.name;
-        let toolArgs: Record<string, unknown> = {};
-        try { toolArgs = JSON.parse(toolCall.function.arguments); } catch { /* ignore */ }
-
-        send("tool_call", { name: toolName, args: toolArgs, callCount: toolCallCount });
-
-        const result = await callMcpTool(toolName, toolArgs);
-
-        let parsedResult: unknown = result;
-        try { parsedResult = JSON.parse(result); } catch { /* keep string */ }
-
-        send("tool_result", { name: toolName, result: parsedResult, callCount: toolCallCount });
-
-        toolResultSummaries.push(`[도구: ${toolName}]\n입력: ${JSON.stringify(toolArgs)}\n결과: ${result.substring(0, 1000)}`);
-
-        messages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: result,
-        });
-      }
-    }
-
-    // Phase 2: Synthesis — use MiniMax (with reasoning) if available, else OpenAI streaming
-    if (minimaxClient && toolResultSummaries.length > 0) {
-      send("status", { step: "reasoning", message: "MiniMax M2.7 추론 중..." });
-
-      const synthesisPrompt = `사용자 질문: ${query}
-
-수집된 데이터 (data.gouv.fr API 결과):
-${toolResultSummaries.join("\n\n---\n\n")}
-
-위 데이터를 바탕으로 대한민국 공공데이터 정책결정자를 위한 심층 분석을 한국어 마크다운으로 작성하세요.
-- 주요 데이터셋과 API 서비스 소개
-- 한국 공공데이터 정책과의 비교 관점 포함
-- 실무 활용 방안 제안
-- 구체적인 데이터셋 ID와 제목 명시`;
-
-      const stream = minimaxClient.messages.stream({
+      const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
-        max_tokens: 3000,
-        messages: [{ role: "user", content: synthesisPrompt }],
+        max_tokens: 5000,
+        system: systemPrompt,
+        tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
+        tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
+        messages,
       });
+
+      // Pending tool calls being built during streaming
+      const pendingTools: Array<{ id: string; name: string; inputJson: string }> = [];
+      let activeToolIdx = -1;
+      let hasTextContent = false;
 
       for await (const event of stream) {
-        if (event.type === "content_block_delta") {
-          const delta = event.delta as { type: string; thinking?: string; text?: string };
+        if (event.type === "content_block_start") {
+          const block = event.content_block as { type: string; id?: string; name?: string };
+
+          if (block.type === "thinking") {
+            if (!thinkingStarted) {
+              send("thinking_start", {});
+              thinkingStarted = true;
+            }
+          } else if (block.type === "tool_use") {
+            send("thinking_stop", {});
+            pendingTools.push({ id: block.id ?? "", name: block.name ?? "", inputJson: "" });
+            activeToolIdx = pendingTools.length - 1;
+          } else if (block.type === "text") {
+            if (thinkingStarted && !hasTextContent) {
+              send("thinking_stop", {});
+              send("status", { step: "writing", message: "답변 작성 중..." });
+            }
+            hasTextContent = true;
+          }
+        } else if (event.type === "content_block_delta") {
+          const delta = event.delta as { type: string; thinking?: string; partial_json?: string; text?: string };
+
           if (delta.type === "thinking_delta" && delta.thinking) {
             send("thinking_delta", { content: delta.thinking });
+          } else if (delta.type === "input_json_delta" && delta.partial_json && activeToolIdx >= 0) {
+            pendingTools[activeToolIdx].inputJson += delta.partial_json;
           } else if (delta.type === "text_delta" && delta.text) {
             send("content", { content: delta.text });
           }
-        } else if (event.type === "content_block_start") {
-          const block = event.content_block as { type: string };
-          if (block.type === "thinking") {
-            send("thinking_start", {});
-          } else if (block.type === "text") {
-            send("thinking_stop", {});
-            send("status", { step: "writing", message: "답변 작성 중..." });
-          }
         }
       }
-    } else {
-      // Fallback: OpenAI streaming final answer
-      send("status", { step: "writing", message: "분석 결과 작성 중..." });
 
-      const stream = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
-        messages,
-        max_completion_tokens: 3000,
-        stream: true,
-      });
+      const finalMsg = await stream.finalMessage();
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) send("content", { content });
+      if (finalMsg.stop_reason === "end_turn") {
+        // Final answer was streamed — done
+        break;
+      }
+
+      if (finalMsg.stop_reason === "tool_use" && pendingTools.length > 0) {
+        // Add assistant message (includes thinking + tool_use blocks)
+        messages.push({ role: "assistant", content: finalMsg.content });
+
+        // Execute each tool and collect results
+        const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
+
+        for (const tool of pendingTools) {
+          toolCallCount++;
+          let toolArgs: Record<string, unknown> = {};
+          try { toolArgs = JSON.parse(tool.inputJson || "{}"); } catch { /* ignore */ }
+
+          send("tool_call", { name: tool.name, args: toolArgs, callCount: toolCallCount });
+
+          const result = await callMcpTool(tool.name, toolArgs);
+
+          let parsedResult: unknown = result;
+          try { parsedResult = JSON.parse(result); } catch { /* keep string */ }
+          send("tool_result", { name: tool.name, result: parsedResult, callCount: toolCallCount });
+
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: tool.id,
+            content: result,
+          });
+        }
+
+        // Add tool results as user message and continue loop
+        messages.push({ role: "user", content: toolResults });
+
+        send("status", { step: "searching", message: `도구 ${toolCallCount}회 호출 완료 · 계속 추론 중...` });
+        continue;
+      }
+
+      // max_tokens or other stop — try to stream a final answer without tools
+      if (!hasTextContent) {
+        messages.push({ role: "assistant", content: finalMsg.content });
+        messages.push({ role: "user", content: "지금까지 수집한 정보를 바탕으로 한국어로 분석 결과를 작성해주세요." });
+        // Will loop once more for the final answer
+      } else {
+        break;
       }
     }
 
