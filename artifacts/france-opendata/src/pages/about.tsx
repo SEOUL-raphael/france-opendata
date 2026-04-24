@@ -414,7 +414,7 @@ const TECH_FEATURES = [
   {
     icon: Cpu,
     label: "AI 에이전트 연동 (MCP)",
-    desc: "2024년 말부터 Model Context Protocol(MCP) 서버(mcp.data.gouv.fr/mcp)를 운영해 LLM 및 AI 에이전트가 공공데이터를 직접 검색·조회·분석할 수 있는 기반을 갖추었습니다. search_datasets, get_dataset_info, query_resource_data 등 9개 표준 도구를 JSON-RPC 2.0 방식으로 제공합니다.",
+    desc: "2025년 11월 Model Context Protocol(MCP) 서버(mcp.data.gouv.fr/mcp)를 처음 공개하고, LLM 및 AI 에이전트가 공공데이터를 직접 검색·조회·분석할 수 있는 기반을 갖추었습니다. search_datasets, get_dataset_info, query_resource_data 등 9개 표준 도구를 JSON-RPC 2.0 방식으로 제공합니다.",
     highlight: true,
     tag: "MCP · JSON-RPC · LLM 연동",
   },
