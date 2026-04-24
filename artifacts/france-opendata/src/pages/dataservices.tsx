@@ -42,11 +42,11 @@ export default function Dataservices() {
                       <span className="line-clamp-1">{service.title}</span>
                     </CardTitle>
                     <CardDescription className="line-clamp-1">
-                      {service.organization?.name || "Unknown Organization"}
+                      {service.organization?.name || "기관 미상"}
                     </CardDescription>
                   </div>
                   {service.private === false && (
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">Public API</Badge>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">공개 API</Badge>
                   )}
                 </div>
               </CardHeader>

@@ -6,7 +6,7 @@ import { logger } from "./lib/logger";
 
 const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
 const allowedOriginPattern = replitDevDomain
-  ? new RegExp(`^https?://(localhost|.*${replitDevDomain.replace(".", "\\.")})(:\\d+)?$`)
+  ? new RegExp(`^https?://(localhost(:\\d+)?|[^/]*${replitDevDomain.replace(/\./g, "\\.")}(:\\d+)?)$`)
   : null;
 
 const restrictedCors: CorsOptions = {
