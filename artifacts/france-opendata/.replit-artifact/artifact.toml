@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "프랑스 공공데이터 포털 — 한국 정책결정자 벤치마크"
+version = "1.0.0"
+id = "artifacts/france-opendata"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22931
+
+[services.development]
+run = "pnpm --filter @workspace/france-opendata run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/france-opendata", "run", "build" ]
+publicDir = "artifacts/france-opendata/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22931"
+BASE_PATH = "/"
