@@ -30,14 +30,35 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { usePortalStats } from "@/hooks/use-datagouv";
 
-const CATEGORIES = [
-  { ko: "교육", fr: "education" },
-  { ko: "보건", fr: "sante" },
-  { ko: "교통", fr: "transport" },
-  { ko: "경제", fr: "economie" },
-  { ko: "환경", fr: "environnement" },
-  { ko: "문화", fr: "culture" },
+const MCP_EXAMPLES = [
+  {
+    label: "파리 인구 관련 데이터셋을 찾아주고, 바로 조회 가능한 표 형식 리소스가 있으면 추천해줘.",
+    searchTerm: "paris population recensement",
+  },
+  {
+    label: "프랑스 부동산 가격 데이터를 찾고, 먼저 어떤 데이터셋부터 살펴보면 좋은지 요약해줘.",
+    searchTerm: "prix immobilier foncier transactions",
+  },
+  {
+    label: "파리의 최근 인구 데이터를 얻으려면 어떤 dataset/resource를 봐야 하는지 단계별로 알려줘.",
+    searchTerm: "paris population statistiques demographiques",
+  },
 ];
+
+interface McpTool {
+  name: string;
+  label: string;
+  description: string;
+  endpoint: string;
+  params: string[];
+  source: string;
+}
+
+interface McpHealthData {
+  status: string;
+  datagouv: string;
+  minimax: string;
+}
 
 interface McpDataset {
   id: string;
@@ -70,14 +91,14 @@ function useMcpSearch() {
   });
   const abortRef = useRef<AbortController | null>(null);
 
-  const search = useCallback(async (query: string) => {
+  const search = useCallback(async (query: string, searchTerm?: string) => {
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     setState({
       status: "searching",
-      statusMessage: `data.gouv.fr에서 "${query}" 검색 중...`,
+      statusMessage: `data.gouv.fr에서 관련 데이터셋 검색 중...`,
       toolResult: null,
       thinking: "",
       content: "",
@@ -85,10 +106,12 @@ function useMcpSearch() {
     });
 
     try {
+      const body: Record<string, string> = { query };
+      if (searchTerm) body.searchQuery = searchTerm;
       const response = await fetch("/api/mcp/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
 
@@ -292,6 +315,30 @@ export default function Home() {
     }
   }, [mcp.content.length > 0]);
 
+  const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
+  const [mcpHealth, setMcpHealth] = useState<McpHealthData | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/mcp/tools")
+      .then((r) => r.json())
+      .then((d: { tools: McpTool[] }) => setMcpTools(d.tools ?? []))
+      .catch(() => {});
+  }, []);
+
+  const checkHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const r = await fetch("/api/mcp/health");
+      const d = await r.json() as McpHealthData;
+      setMcpHealth(d);
+    } catch {
+      setMcpHealth({ status: "error", datagouv: "unreachable", minimax: "unknown" });
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
@@ -299,9 +346,9 @@ export default function Home() {
     search(q);
   };
 
-  const handleCategory = (fr: string) => {
-    setQuery(fr);
-    search(fr);
+  const handleExample = (label: string, searchTerm: string) => {
+    setQuery(label);
+    search(label, searchTerm);
   };
 
   return (
@@ -311,7 +358,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-1">
             <Cpu className="h-3.5 w-3.5" />
-            자연어로 Minimax 모델이 MCP를 통해 검색
+            자연어로 프랑스 공공데이터 포털을 검색하는 MCP 예시
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
             프랑스 공공데이터 생태계 탐색
@@ -323,7 +370,7 @@ export default function Home() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="데이터셋 주제 검색 (예: transport, education, budget...)"
+                placeholder="자연어로 질문하거나 키워드를 입력하세요..."
                 className="pl-12 pr-28 h-14 text-base rounded-full shadow-sm"
               />
               <Button
@@ -338,34 +385,36 @@ export default function Home() {
                 )}
               </Button>
             </div>
+          </form>
 
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {CATEGORIES.map((cat) => (
-                <Button
-                  key={cat.ko}
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full bg-background"
-                  onClick={() => handleCategory(cat.fr)}
-                  type="button"
-                  disabled={mcp.status === "searching" || mcp.status === "thinking"}
-                >
-                  {cat.ko}
-                </Button>
-              ))}
-              {isActive && (
+          {/* Example questions */}
+          <div className="max-w-2xl mx-auto space-y-2 mt-2">
+            <p className="text-xs text-muted-foreground mb-2">예시 질문 (클릭하면 바로 실행)</p>
+            {MCP_EXAMPLES.map((ex, i) => (
+              <button
+                key={i}
+                onClick={() => handleExample(ex.label, ex.searchTerm)}
+                disabled={mcp.status === "searching" || mcp.status === "thinking"}
+                className="w-full text-left px-4 py-2.5 rounded-lg border bg-background hover:bg-muted/60 hover:border-primary/40 transition-all text-sm text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-start gap-2 group"
+              >
+                <span className="text-primary mt-0.5 shrink-0 text-xs font-mono">{String(i + 1).padStart(2, "0")}</span>
+                <span className="group-hover:text-foreground transition-colors">{ex.label}</span>
+              </button>
+            ))}
+            {isActive && (
+              <div className="flex justify-end pt-1">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="rounded-full text-muted-foreground"
+                  className="text-muted-foreground text-xs"
                   onClick={reset}
                   type="button"
                 >
                   초기화
                 </Button>
-              )}
-            </div>
-          </form>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -409,13 +458,79 @@ export default function Home() {
       <section className="py-10 px-4 sm:px-8 flex-1">
         <div className="max-w-4xl mx-auto space-y-5">
           {!isActive && (
-            <div className="text-center py-20 text-muted-foreground space-y-3">
-              <Brain className="h-12 w-12 mx-auto opacity-20" />
-              <p className="text-lg font-medium">MCP 도구로 AI 분석을 시작하세요</p>
-              <p className="text-sm max-w-md mx-auto">
-                위 검색창에 주제어를 입력하면 data.gouv.fr API를 도구로 호출하여
-                프랑스 공공데이터를 수집하고 Minimax AI가 분석합니다.
-              </p>
+            <div className="space-y-6">
+              {/* MCP Tools list */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    <h2 className="text-sm font-semibold">사용 가능한 MCP 도구</h2>
+                    <Badge variant="secondary" className="text-xs">MiniMax-M1 모델 연동</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {mcpHealth && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="flex items-center gap-1">
+                          {mcpHealth.datagouv === "ok"
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            : <AlertCircle className="h-3.5 w-3.5 text-yellow-500" />}
+                          data.gouv.fr: {mcpHealth.datagouv === "ok" ? "정상" : "점검 중"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          {mcpHealth.minimax === "configured"
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            : <AlertCircle className="h-3.5 w-3.5 text-yellow-500" />}
+                          Minimax: {mcpHealth.minimax === "configured" ? "정상" : "미설정"}
+                        </span>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={checkHealth}
+                      disabled={healthLoading}
+                    >
+                      {healthLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "상태 확인"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {mcpTools.map((tool) => (
+                    <div
+                      key={tool.name}
+                      className="rounded-lg border bg-muted/20 p-4 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold">{tool.label}</p>
+                          <p className="text-xs font-mono text-muted-foreground">{tool.name}()</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0">{tool.source}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{tool.description}</p>
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {tool.params.map((p) => (
+                          <span key={p} className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{p}</span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground/70 font-mono border-t pt-2">{tool.endpoint}</p>
+                    </div>
+                  ))}
+                  {mcpTools.length === 0 && (
+                    <div className="col-span-2 text-center py-6 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                      도구 목록 불러오는 중...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center py-6 text-muted-foreground space-y-2 border-t">
+                <Brain className="h-10 w-10 mx-auto opacity-15" />
+                <p className="text-sm">위 예시 질문을 클릭하거나 직접 입력해 Minimax AI 분석을 시작하세요</p>
+              </div>
             </div>
           )}
 

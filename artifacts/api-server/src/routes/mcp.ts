@@ -16,14 +16,63 @@ const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
 const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 const DATAGOUV_BASE_URL = "https://www.data.gouv.fr/api/1";
 
+const MCP_TOOLS = [
+  {
+    name: "search_datasets",
+    label: "데이터셋 검색",
+    description: "data.gouv.fr에서 키워드로 데이터셋을 검색합니다. 제목·설명·태그 기반으로 관련 데이터셋을 수집합니다.",
+    endpoint: "GET /api/1/datasets/",
+    params: ["query (검색어)", "page_size (결과 수)"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "get_dataset_detail",
+    label: "데이터셋 상세 조회",
+    description: "특정 데이터셋의 메타데이터, 리소스 목록, 라이선스, 기관 정보 등을 상세 조회합니다.",
+    endpoint: "GET /api/1/datasets/{id}/",
+    params: ["id (데이터셋 ID)"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "search_organizations",
+    label: "기관 목록 조회",
+    description: "데이터를 공개한 기관을 검색합니다. 기관명·규모·데이터셋 수 기준으로 필터링 가능합니다.",
+    endpoint: "GET /api/1/organizations/",
+    params: ["query (기관명)", "page (페이지)"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "list_dataservices",
+    label: "API 서비스 목록",
+    description: "data.gouv.fr에 등록된 공개 API 서비스(데이터 서비스) 목록을 조회합니다.",
+    endpoint: "GET /api/1/dataservices/",
+    params: ["page (페이지)"],
+    source: "data.gouv.fr API v1",
+  },
+];
+
+router.get("/mcp/tools", (_req, res) => {
+  res.json({ tools: MCP_TOOLS, model: "MiniMax-M1", status: "active" });
+});
+
+router.get("/mcp/health", async (_req, res) => {
+  try {
+    const r = await axios.get("https://www.data.gouv.fr/api/1/site/", { timeout: 5000 });
+    res.json({ status: "ok", datagouv: r.status === 200 ? "ok" : "degraded", minimax: !!process.env.MINIMAX_API_KEY ? "configured" : "missing" });
+  } catch {
+    res.json({ status: "degraded", datagouv: "unreachable", minimax: !!process.env.MINIMAX_API_KEY ? "configured" : "missing" });
+  }
+});
+
 router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   const rawQuery = req.body?.query;
+  const rawSearchQuery = req.body?.searchQuery;
   if (!rawQuery || typeof rawQuery !== "string" || rawQuery.trim().length === 0) {
     res.status(400).json({ error: "query 파라미터가 필요합니다." });
     return;
   }
-  if (rawQuery.length > 200) {
-    res.status(400).json({ error: "query가 너무 깁니다. 200자 이내로 입력하세요." });
+  if (rawQuery.length > 500) {
+    res.status(400).json({ error: "query가 너무 깁니다. 500자 이내로 입력하세요." });
     return;
   }
 
@@ -33,6 +82,7 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   }
 
   const query = rawQuery.trim();
+  const searchQuery = (typeof rawSearchQuery === "string" && rawSearchQuery.trim()) ? rawSearchQuery.trim() : query;
 
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-store");
@@ -45,10 +95,10 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   };
 
   try {
-    send("status", { step: "searching", message: `data.gouv.fr에서 "${query}" 검색 중...` });
+    send("status", { step: "searching", message: `data.gouv.fr에서 관련 데이터셋 검색 중...` });
 
     const searchRes = await axios.get(`${DATAGOUV_BASE_URL}/datasets/`, {
-      params: { q: query, page_size: 5, sort: "score" },
+      params: { q: searchQuery, page_size: 5, sort: "score" },
       timeout: 10000,
     });
 
