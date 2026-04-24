@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSearchDatasets, usePortalStats } from "@/hooks/use-datagouv";
+import type { DGDataset } from "@/types/datagouv";
 
 const CATEGORIES = [
   { ko: "교육", fr: "education" },
@@ -141,7 +142,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {searchResults?.data?.map((dataset: any) => (
+            {searchResults?.data?.map((dataset: DGDataset) => (
               <Card key={dataset.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start gap-4">
@@ -157,7 +158,7 @@ export default function Home() {
                       </CardDescription>
                     </div>
                     <Badge variant="outline" className="shrink-0 bg-primary/5">
-                      {new Date(dataset.last_update).toLocaleDateString()}
+                      {dataset.last_update ? new Date(dataset.last_update).toLocaleDateString() : "—"}
                     </Badge>
                   </div>
                 </CardHeader>

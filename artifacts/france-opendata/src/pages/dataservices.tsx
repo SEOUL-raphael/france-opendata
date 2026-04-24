@@ -1,4 +1,5 @@
 import { useGetDataservices } from "@/hooks/use-datagouv";
+import type { DGDataservice } from "@/types/datagouv";
 import { Server, Code, ArrowRight, Loader2, Shield, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ export default function Dataservices() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {dataservices?.data?.map((service: any) => (
+          {dataservices?.data?.map((service: DGDataservice) => (
             <Card key={service.id} className="flex flex-col hover:border-primary/50 transition-colors">
               <CardHeader className="pb-3 border-b bg-muted/10">
                 <div className="flex justify-between items-start gap-4">
@@ -78,7 +79,7 @@ export default function Dataservices() {
               </CardContent>
               <CardFooter className="pt-0 mt-auto">
                 <Button variant="secondary" className="w-full" asChild>
-                  <a href={service.page} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                  <a href={service.page ?? undefined} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
                     공식 문서 보기 <ArrowRight className="h-4 w-4" />
                   </a>
                 </Button>

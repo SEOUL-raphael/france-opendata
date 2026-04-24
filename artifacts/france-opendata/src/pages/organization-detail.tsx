@@ -1,5 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useGetOrganization, useGetOrganizationDatasets } from "@/hooks/use-datagouv";
+import type { DGDataset, DGResource } from "@/types/datagouv";
 import { Building2, Globe, MapPin, ExternalLink, Loader2, Database, Users, Calendar, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +59,7 @@ export default function OrganizationDetail() {
               )}
               
               <div className="flex flex-wrap justify-center gap-2 mb-6">
-                <Badge variant="secondary">{org.class || "기관"}</Badge>
+                <Badge variant="secondary">{org.badges?.[0]?.kind || "기관"}</Badge>
               </div>
 
               <div className="space-y-3 text-sm text-left">
@@ -114,7 +115,7 @@ export default function OrganizationDetail() {
               </Card>
             ) : (
               <div className="grid gap-4">
-                {datasets.data.map((dataset: any) => (
+                {datasets.data.map((dataset: DGDataset) => (
                   <Card key={dataset.id} className="hover:border-primary/50 transition-colors">
                     <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                       <div className="flex-1 min-w-0 space-y-1">
@@ -124,7 +125,7 @@ export default function OrganizationDetail() {
                         <p className="text-xs text-muted-foreground flex items-center gap-3">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" /> 
-                            {new Date(dataset.last_update).toLocaleDateString()}
+                            {dataset.last_update ? new Date(dataset.last_update).toLocaleDateString() : "—"}
                           </span>
                           {dataset.frequency && (
                             <span className="capitalize text-muted-foreground/70">• {dataset.frequency}</span>
@@ -132,7 +133,7 @@ export default function OrganizationDetail() {
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-1 shrink-0">
-                        {dataset.resources?.slice(0, 3).map((res: any, idx: number) => (
+                        {dataset.resources?.slice(0, 3).map((res: DGResource, idx: number) => (
                           <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0">
                             {res.format || 'FILE'}
                           </Badge>

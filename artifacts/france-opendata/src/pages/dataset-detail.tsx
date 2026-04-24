@@ -1,13 +1,15 @@
 import { useParams } from "wouter";
 import { useGetDataset } from "@/hooks/use-datagouv";
+import type { DGResource } from "@/types/datagouv";
 import { Loader2, Building2, Calendar, FileText, Download, Shield, Eye, Repeat, Users, FileJson, FileIcon, FileSpreadsheet, Bot, HardDrive } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useChatContext } from "@/contexts/chat-context";
 
-const getFormatColor = (format: string) => {
-  const f = format?.toLowerCase() || "";
+const getFormatColor = (format: string | null) => {
+  const f = (format ?? "").toLowerCase();
   if (f.includes('csv')) return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300';
   if (f.includes('json')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
   if (f.includes('xls') || f.includes('xlsx')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
@@ -16,8 +18,8 @@ const getFormatColor = (format: string) => {
   return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
 };
 
-const getFormatIcon = (format: string) => {
-  const f = format?.toLowerCase() || "";
+const getFormatIcon = (format: string | null) => {
+  const f = (format ?? "").toLowerCase();
   if (f.includes('csv') || f.includes('xls')) return <FileSpreadsheet className="h-4 w-4" />;
   if (f.includes('json')) return <FileJson className="h-4 w-4" />;
   return <FileIcon className="h-4 w-4" />;
@@ -34,7 +36,8 @@ const formatBytes = (bytes: number) => {
 export default function DatasetDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id || "";
-  
+  const { openChat } = useChatContext();
+
   const { data: dataset, isLoading, isError } = useGetDataset(id);
 
   if (isLoading) {
@@ -77,7 +80,7 @@ export default function DatasetDetail() {
               <HardDrive className="h-5 w-5 text-primary" /> 데이터 리소스 ({dataset.resources?.length || 0})
             </h2>
             <div className="space-y-3">
-              {dataset.resources?.map((resource: any) => (
+              {dataset.resources?.map((resource: DGResource) => (
                 <Card key={resource.id} className="overflow-hidden">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                     <div className="flex items-start gap-3">
@@ -90,7 +93,7 @@ export default function DatasetDetail() {
                           {resource.title || resource.url.split('/').pop()}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
-                          <span>마지막 수정: {new Date(resource.last_modified || resource.published).toLocaleDateString()}</span>
+                          <span>마지막 수정: {new Date(resource.last_modified ?? resource.created_at).toLocaleDateString()}</span>
                           {resource.filesize && <span>• {formatBytes(resource.filesize)}</span>}
                         </p>
                       </div>
@@ -143,7 +146,7 @@ export default function DatasetDetail() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground mb-1 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> 업데이트</div>
-                  <div className="font-medium">{new Date(dataset.last_update).toLocaleDateString()}</div>
+                  <div className="font-medium">{dataset.last_update ? new Date(dataset.last_update).toLocaleDateString() : "정보 없음"}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1 flex items-center gap-1.5"><Repeat className="h-3.5 w-3.5" /> 주기</div>
@@ -171,11 +174,9 @@ export default function DatasetDetail() {
               <p className="text-sm text-muted-foreground mb-4">
                 이 데이터셋의 구조, 활용 가능성, 한국 정책과의 비교 분석을 AI에게 물어보세요.
               </p>
-              <Button className="w-full" onClick={() => {
-                // Just visually indicating it, actual chat is via floating panel
-                // We'll rely on the floating chat panel picking up location context
-                document.querySelector('button.fixed.bottom-6')?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
-              }}>
+              <Button className="w-full" onClick={() => openChat(
+                `이 데이터셋을 분석해주세요: "${dataset.title}". 주요 내용, 활용 가능성, 한국 정책에서의 시사점을 한국어로 설명해주세요.`
+              )}>
                 AI로 분석하기
               </Button>
             </CardContent>

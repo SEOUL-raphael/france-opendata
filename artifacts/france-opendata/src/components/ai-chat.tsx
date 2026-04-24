@@ -7,9 +7,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSendChatMessage } from "@workspace/api-client-react";
 import type { ChatMessage } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { useChatContext } from "@/contexts/chat-context";
 
 export function AIChat() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, initialMessage, openChat, closeChat, clearInitialMessage } = useChatContext();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -17,7 +18,6 @@ export function AIChat() {
 
   const chatMutation = useSendChatMessage();
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
@@ -29,10 +29,18 @@ export function AIChat() {
     }
   }, [messages, chatMutation.isPending]);
 
-  const handleSend = () => {
-    if (!input.trim() || chatMutation.isPending) return;
+  useEffect(() => {
+    if (initialMessage && isOpen) {
+      setInput(initialMessage);
+      clearInitialMessage();
+    }
+  }, [initialMessage, isOpen, clearInitialMessage]);
 
-    const userMsg: ChatMessage = { role: "user", content: input.trim() };
+  const handleSend = (overrideInput?: string) => {
+    const text = (overrideInput ?? input).trim();
+    if (!text || chatMutation.isPending) return;
+
+    const userMsg: ChatMessage = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
@@ -64,7 +72,7 @@ export function AIChat() {
   return (
     <>
       <Button
-        onClick={() => setIsOpen(true)}
+        onClick={() => openChat()}
         className={`fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg transition-transform hover:scale-105 z-50 ${
           isOpen ? "scale-0 opacity-0" : "scale-100 opacity-100"
         }`}
@@ -84,12 +92,12 @@ export function AIChat() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full"
-              onClick={() => setIsOpen(false)}
+              onClick={closeChat}
             >
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
-          
+
           <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
             <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
               {messages.length === 0 && (
@@ -106,9 +114,7 @@ export function AIChat() {
                           variant="outline"
                           size="sm"
                           className="text-xs justify-start h-auto py-2 whitespace-normal text-left"
-                          onClick={() => {
-                            setInput(suggestion);
-                          }}
+                          onClick={() => setInput(suggestion)}
                         >
                           {suggestion}
                         </Button>
@@ -117,7 +123,7 @@ export function AIChat() {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex flex-col gap-4">
                 {messages.map((msg, i) => (
                   <div
@@ -163,7 +169,7 @@ export function AIChat() {
                 )}
               </div>
             </ScrollArea>
-            
+
             <div className="p-3 border-t bg-background mt-auto">
               <form
                 onSubmit={(e) => {
