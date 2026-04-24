@@ -567,9 +567,7 @@ export default function Home() {
             <Cpu className="h-3.5 w-3.5" />
             자연어로 프랑스 공공데이터 포털을 검색하는 MCP
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-            프랑스 공공데이터 생태계 탐색
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">프랑스 공공데이터 탐색</h1>
 
           <form
             onSubmit={handleSearch}
@@ -636,7 +634,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Stats */}
       <section className="py-6 bg-muted/30 border-b px-4 sm:px-8">
         <div className="max-w-6xl mx-auto">
@@ -692,7 +689,6 @@ export default function Home() {
           ) : null}
         </div>
       </section>
-
       {/* MCP Results / Tools Panel */}
       <section className="py-10 px-4 sm:px-8 flex-1">
         <div className="max-w-4xl mx-auto space-y-5">
