@@ -92,19 +92,82 @@ function useMcpSearch() {
     statusMessage: "",
     toolCalls: [],
     thinking: "",
+    isThinking: false,
     content: "",
     errorMessage: null,
   });
-  const abortRef = useRef<AbortController | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  const search = useCallback(async (query: string) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const handleEvent = useCallback((event: string, data: Record<string, unknown>) => {
+    if (event === "status") {
+      setState((prev) => ({
+        ...prev,
+        status: (data.step as McpSearchState["status"]) ?? "thinking",
+        statusMessage: (data.message as string) ?? "",
+      }));
+    } else if (event === "tool_call") {
+      setState((prev) => ({
+        ...prev,
+        status: "searching",
+        statusMessage: `MCP 도구 호출: ${data.name as string}`,
+        toolCalls: [
+          ...prev.toolCalls,
+          {
+            name: data.name as string,
+            args: (data.args as Record<string, unknown>) ?? {},
+            callCount: (data.callCount as number) ?? prev.toolCalls.length + 1,
+          },
+        ],
+      }));
+    } else if (event === "tool_result") {
+      setState((prev) => ({
+        ...prev,
+        toolCalls: prev.toolCalls.map((tc) =>
+          tc.callCount === (data.callCount as number)
+            ? { ...tc, result: data.result }
+            : tc
+        ),
+      }));
+    } else if (event === "thinking_start") {
+      setState((prev) => ({ ...prev, status: "thinking", isThinking: true }));
+    } else if (event === "thinking_delta") {
+      setState((prev) => ({
+        ...prev,
+        status: "thinking",
+        isThinking: true,
+        thinking: prev.thinking + ((data.content as string) ?? ""),
+      }));
+    } else if (event === "thinking_stop") {
+      setState((prev) => ({ ...prev, isThinking: false }));
+    } else if (event === "content") {
+      setState((prev) => ({
+        ...prev,
+        content: prev.content + ((data.content as string) ?? ""),
+      }));
+    } else if (event === "done") {
+      setState((prev) => ({ ...prev, status: "done", statusMessage: "분석 완료" }));
+    } else if (event === "error") {
+      setState((prev) => ({
+        ...prev,
+        status: "error",
+        errorMessage: (data.message as string) ?? "알 수 없는 오류",
+      }));
+    }
+  }, []);
+
+  const search = useCallback((query: string) => {
+    // Close existing connection
+    if (wsRef.current) {
+      wsRef.current.onmessage = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
     setState({
       status: "searching",
-      statusMessage: "MCP 도구 선택 중...",
+      statusMessage: "WebSocket 연결 중...",
       toolCalls: [],
       thinking: "",
       isThinking: false,
@@ -112,127 +175,58 @@ function useMcpSearch() {
       errorMessage: null,
     });
 
-    try {
-      const response = await fetch("/api/mcp/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-        signal: controller.signal,
-      });
+    const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${wsProtocol}//${location.host}/api/ws/search`);
+    wsRef.current = ws;
 
-      if (!response.ok || !response.body) {
-        throw new Error("서버 오류가 발생했습니다.");
+    ws.onopen = () => {
+      setState((prev) => ({ ...prev, statusMessage: "MCP 도구 선택 중..." }));
+      ws.send(JSON.stringify({ query }));
+    };
+
+    ws.onmessage = (e: MessageEvent) => {
+      try {
+        const msg = JSON.parse(e.data as string) as { event: string; data: Record<string, unknown> };
+        handleEvent(msg.event, msg.data);
+      } catch {
+        // skip malformed
       }
+    };
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
-
-        for (const part of parts) {
-          const lines = part.split("\n");
-          let eventType = "message";
-          let dataLine = "";
-
-          for (const line of lines) {
-            if (line.startsWith("event: ")) eventType = line.slice(7).trim();
-            if (line.startsWith("data: ")) dataLine = line.slice(6);
-          }
-
-          if (!dataLine) continue;
-
-          try {
-            const data = JSON.parse(dataLine) as Record<string, unknown>;
-
-            if (eventType === "status") {
-              setState((prev) => ({
-                ...prev,
-                status: (data.step as McpSearchState["status"]) ?? "thinking",
-                statusMessage: (data.message as string) ?? "",
-              }));
-            } else if (eventType === "tool_call") {
-              setState((prev) => ({
-                ...prev,
-                status: "searching",
-                statusMessage: `MCP 도구 호출: ${data.name as string}`,
-                toolCalls: [
-                  ...prev.toolCalls,
-                  {
-                    name: data.name as string,
-                    args: (data.args as Record<string, unknown>) ?? {},
-                    callCount: (data.callCount as number) ?? prev.toolCalls.length + 1,
-                  },
-                ],
-              }));
-            } else if (eventType === "tool_result") {
-              setState((prev) => ({
-                ...prev,
-                toolCalls: prev.toolCalls.map((tc) =>
-                  tc.callCount === (data.callCount as number)
-                    ? { ...tc, result: data.result }
-                    : tc
-                ),
-              }));
-            } else if (eventType === "thinking_start") {
-              setState((prev) => ({
-                ...prev,
-                status: "thinking",
-                isThinking: true,
-              }));
-            } else if (eventType === "thinking_delta") {
-              setState((prev) => ({
-                ...prev,
-                status: "thinking",
-                isThinking: true,
-                thinking: prev.thinking + ((data.content as string) ?? ""),
-              }));
-            } else if (eventType === "thinking_stop") {
-              setState((prev) => ({
-                ...prev,
-                isThinking: false,
-              }));
-            } else if (eventType === "content") {
-              setState((prev) => ({
-                ...prev,
-                content: prev.content + ((data.content as string) ?? ""),
-              }));
-            } else if (eventType === "done") {
-              setState((prev) => ({ ...prev, status: "done", statusMessage: "분석 완료" }));
-            } else if (eventType === "error") {
-              setState((prev) => ({
-                ...prev,
-                status: "error",
-                errorMessage: (data.message as string) ?? "알 수 없는 오류",
-              }));
-            }
-          } catch {
-            // skip malformed SSE
-          }
-        }
-      }
-    } catch (err) {
-      if ((err as Error).name === "AbortError") return;
+    ws.onerror = () => {
       setState((prev) => ({
         ...prev,
         status: "error",
-        errorMessage: "연결 오류가 발생했습니다. 다시 시도해주세요.",
+        errorMessage: "WebSocket 연결 오류가 발생했습니다. 다시 시도해주세요.",
       }));
-    }
-  }, []);
+    };
+
+    ws.onclose = (e) => {
+      if (e.code !== 1000 && e.code !== 1001) {
+        setState((prev) => {
+          if (prev.status === "searching" || prev.status === "thinking") {
+            return { ...prev, status: "error", errorMessage: "연결이 끊어졌습니다. 다시 시도해주세요." };
+          }
+          return prev;
+        });
+      }
+    };
+  }, [handleEvent]);
 
   const reset = useCallback(() => {
-    if (abortRef.current) abortRef.current.abort();
+    if (wsRef.current) {
+      wsRef.current.onmessage = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
     setState({ status: "idle", statusMessage: "", toolCalls: [], thinking: "", isThinking: false, content: "", errorMessage: null });
   }, []);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => () => {
+    wsRef.current?.close();
+  }, []);
 
   return { state, search, reset };
 }
