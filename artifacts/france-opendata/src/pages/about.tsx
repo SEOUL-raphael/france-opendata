@@ -51,7 +51,7 @@ const USE_CASES = [
     original: "Données de valeur foncière (DVF)",
     description:
       "프랑스 전역의 부동산 실거래 가격 데이터를 누구나 자유롭게 조회·분석할 수 있도록 공개합니다. 시민·전문가·연구자 모두 지역별·유형별 실거래가를 직접 확인할 수 있습니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
+    url: "https://www.data.gouv.fr/pages/onboarding/dvf",
   },
   {
     name: "농업 경영 간소화",
@@ -93,14 +93,14 @@ const USE_CASES = [
     original: "Annuaire des Entreprises",
     description:
       "SIRENE 기반 기업 정보 검색 포털입니다. 사업자 등록번호(SIRET/SIREN)로 기업의 업종·규모·법적 형태·대표자를 즉시 확인할 수 있어 행정 절차를 크게 단축합니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
+    url: "https://www.data.gouv.fr/pages/onboarding/annuaire-des-entreprises",
   },
   {
     name: "주유소 유가 추이 분석",
     original: "Exploration des prix du carburant",
     description:
       "프랑스 전국 1만여 개 주유소의 실시간 유가를 공개합니다. 소비자 앱·지도 서비스·언론 등 수백 개 서비스가 이 데이터를 재활용해 가격 비교 서비스를 제공합니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
+    url: "https://www.data.gouv.fr/pages/onboarding/prix_carburant",
   },
   {
     name: "대입 진학 경로 분석",
