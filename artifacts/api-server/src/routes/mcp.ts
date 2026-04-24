@@ -337,7 +337,7 @@ Please output the response in Korean.`;
   ];
 
   try {
-    const MAX_LOOPS = 30; // safety cap only — loop exits naturally on end_turn
+    const MAX_LOOPS = 50; // safety cap only — loop exits naturally on end_turn
     let loops = 0;
     let toolCallCount = 0;
 

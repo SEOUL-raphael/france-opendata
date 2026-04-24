@@ -142,7 +142,7 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [{ role: "user", content: query }];
 
-  const MAX_LOOPS = 30; // safety cap only — loop exits naturally on end_turn
+  const MAX_LOOPS = 50; // safety cap only — loop exits naturally on end_turn
   let loops = 0;
   let toolCallCount = 0;
   let totalInputTokens = 0;
