@@ -131,6 +131,8 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
   let loops = 0;
   let toolCallCount = 0;
   let thinkingStarted = false;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
 
   send("status", { step: "searching", message: "MiniMax M2.7 추론 및 데이터 수집 중..." });
 
@@ -181,6 +183,10 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
     }
 
     const finalMsg = await stream.finalMessage();
+
+    totalInputTokens += finalMsg.usage?.input_tokens ?? 0;
+    totalOutputTokens += finalMsg.usage?.output_tokens ?? 0;
+    send("usage", { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
 
     if (finalMsg.stop_reason === "end_turn") break;
 

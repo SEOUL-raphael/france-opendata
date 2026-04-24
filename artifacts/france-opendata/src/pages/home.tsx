@@ -20,6 +20,7 @@ import {
   Server,
   Zap,
   RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,18 @@ interface McpToolCall {
   result?: unknown;
 }
 
+interface DatasetCard {
+  id: string;
+  title: string;
+  organization?: string;
+  url: string;
+}
+
+interface TokenUsage {
+  input: number;
+  output: number;
+}
+
 interface McpSearchState {
   status: "idle" | "searching" | "thinking" | "writing" | "done" | "error";
   statusMessage: string;
@@ -84,18 +97,82 @@ interface McpSearchState {
   isThinking: boolean;
   content: string;
   errorMessage: string | null;
+  datasets: DatasetCard[];
+  tokenUsage: TokenUsage;
 }
 
-function useMcpSearch() {
-  const [state, setState] = useState<McpSearchState>({
-    status: "idle",
-    statusMessage: "",
-    toolCalls: [],
-    thinking: "",
-    isThinking: false,
-    content: "",
-    errorMessage: null,
+function extractDatasetsFromResult(toolName: string, result: unknown): DatasetCard[] {
+  if (!["search_datasets", "get_dataset_info", "list_dataset_resources"].includes(toolName)) return [];
+
+  try {
+    if (Array.isArray(result)) {
+      return (result as Array<Record<string, unknown>>)
+        .filter((d) => d.id && d.title)
+        .map((d) => ({
+          id: String(d.id),
+          title: String(d.title),
+          organization: d.organization ? String(d.organization) : undefined,
+          url: `https://www.data.gouv.fr/datasets/${d.id}`,
+        }));
+    }
+    if (result && typeof result === "object" && !Array.isArray(result)) {
+      const d = result as Record<string, unknown>;
+      if (d.id && d.title) {
+        return [{ id: String(d.id), title: String(d.title), organization: d.organization ? String(d.organization) : undefined, url: `https://www.data.gouv.fr/datasets/${d.id}` }];
+      }
+    }
+    if (typeof result === "string") {
+      const datasets: DatasetCard[] = [];
+      const lines = result.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const titleMatch = lines[i].match(/^\d+\.\s+(.+)$/);
+        if (titleMatch) {
+          const title = titleMatch[1].trim();
+          let id = "";
+          let org = "";
+          for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
+            const idMatch = lines[j].match(/ID:\s*(\S+)/);
+            const orgMatch = lines[j].match(/Organization:\s*(.+)$/);
+            if (idMatch) id = idMatch[1];
+            if (orgMatch) org = orgMatch[1].trim();
+            if (lines[j].trim() === "" && id) break;
+          }
+          if (id && title) {
+            datasets.push({ id, title, organization: org || undefined, url: `https://www.data.gouv.fr/datasets/${id}` });
+          }
+        }
+      }
+      return datasets;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function deduplicateDatasets(datasets: DatasetCard[]): DatasetCard[] {
+  const seen = new Set<string>();
+  return datasets.filter((d) => {
+    if (seen.has(d.id)) return false;
+    seen.add(d.id);
+    return true;
   });
+}
+
+const INITIAL_MCP_STATE: McpSearchState = {
+  status: "idle",
+  statusMessage: "",
+  toolCalls: [],
+  thinking: "",
+  isThinking: false,
+  content: "",
+  errorMessage: null,
+  datasets: [],
+  tokenUsage: { input: 0, output: 0 },
+};
+
+function useMcpSearch() {
+  const [state, setState] = useState<McpSearchState>(INITIAL_MCP_STATE);
   const wsRef = useRef<WebSocket | null>(null);
 
   const handleEvent = useCallback((event: string, data: Record<string, unknown>) => {
@@ -120,6 +197,7 @@ function useMcpSearch() {
         ],
       }));
     } else if (event === "tool_result") {
+      const extracted = extractDatasetsFromResult(data.name as string, data.result);
       setState((prev) => ({
         ...prev,
         toolCalls: prev.toolCalls.map((tc) =>
@@ -127,6 +205,17 @@ function useMcpSearch() {
             ? { ...tc, result: data.result }
             : tc
         ),
+        datasets: extracted.length > 0
+          ? deduplicateDatasets([...prev.datasets, ...extracted])
+          : prev.datasets,
+      }));
+    } else if (event === "usage") {
+      setState((prev) => ({
+        ...prev,
+        tokenUsage: {
+          input: (data.inputTokens as number) ?? prev.tokenUsage.input,
+          output: (data.outputTokens as number) ?? prev.tokenUsage.output,
+        },
       }));
     } else if (event === "thinking_start") {
       setState((prev) => ({ ...prev, status: "thinking", isThinking: true }));
@@ -165,15 +254,7 @@ function useMcpSearch() {
       wsRef.current = null;
     }
 
-    setState({
-      status: "searching",
-      statusMessage: "WebSocket 연결 중...",
-      toolCalls: [],
-      thinking: "",
-      isThinking: false,
-      content: "",
-      errorMessage: null,
-    });
+    setState({ ...INITIAL_MCP_STATE, status: "searching", statusMessage: "WebSocket 연결 중..." });
 
     const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${wsProtocol}//${location.host}/api/ws/search`);
@@ -221,7 +302,7 @@ function useMcpSearch() {
       wsRef.current.close();
       wsRef.current = null;
     }
-    setState({ status: "idle", statusMessage: "", toolCalls: [], thinking: "", isThinking: false, content: "", errorMessage: null });
+    setState(INITIAL_MCP_STATE);
   }, []);
 
   useEffect(() => () => {
@@ -546,12 +627,24 @@ export default function Home() {
                 ) : (
                   <Cpu className="h-4 w-4 text-primary shrink-0" />
                 )}
-                <span className="text-sm font-medium">{mcp.statusMessage}</span>
-                {mcp.toolCalls.length > 0 && (
-                  <Badge variant="outline" className="ml-auto text-xs">
-                    MCP 호출 {mcp.toolCalls.length}회
-                  </Badge>
-                )}
+                <span className="text-sm font-medium flex-1 min-w-0 truncate">{mcp.statusMessage}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {mcp.toolCalls.length > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      MCP {mcp.toolCalls.length}회
+                    </Badge>
+                  )}
+                  {(mcp.tokenUsage.input > 0 || mcp.tokenUsage.output > 0) && (
+                    <Badge variant="secondary" className="text-xs font-mono gap-1">
+                      <span className="text-muted-foreground">in</span>
+                      {mcp.tokenUsage.input.toLocaleString()}
+                      <span className="text-muted-foreground mx-0.5">·</span>
+                      <span className="text-muted-foreground">out</span>
+                      {mcp.tokenUsage.output.toLocaleString()}
+                      <span className="text-muted-foreground ml-0.5">tok</span>
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {/* Error */}
@@ -688,6 +781,39 @@ export default function Home() {
                       )}
                     </CardContent>
                   </Card>
+                  {/* Dataset Cards */}
+                  {mcp.datasets.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <Database className="h-4 w-4 text-primary" />
+                        <h3 className="text-sm font-semibold">활용된 데이터셋</h3>
+                        <Badge variant="secondary" className="text-xs">{mcp.datasets.length}개</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {mcp.datasets.map((ds) => (
+                          <a
+                            key={ds.id}
+                            href={ds.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition-all group"
+                          >
+                            <div className="shrink-0 mt-0.5">
+                              <Database className="h-3.5 w-3.5 text-primary/60 group-hover:text-primary transition-colors" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">{ds.title}</p>
+                              {ds.organization && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{ds.organization}</p>
+                              )}
+                            </div>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {mcp.status === "done" && (
                     <div className="mt-3 flex gap-2">
                       <Button variant="outline" size="sm" onClick={reset} className="gap-1.5">
