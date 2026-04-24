@@ -218,109 +218,130 @@ const ALL_CATEGORIES: CategoryKey[] = [
 
 const GUIDES = [
   {
-    group: "데이터 생산자",
-    groupIcon: Database,
-    groupColor: "text-blue-600 dark:text-blue-400",
-    groupBg: "bg-blue-50 dark:bg-blue-950/20",
-    groupBorder: "border-blue-200 dark:border-blue-800",
-    items: [
-      {
-        title: "data.gouv.fr에 데이터 게시하기",
-        titleFr: "Publier des données sur data.gouv.fr",
-        desc: "계정 생성부터 조직 등록, 데이터셋·리소스 게시, 메타데이터 작성, 라이선스 선택까지 공공데이터 게시의 전 과정을 단계별로 안내합니다.",
-        tags: ["데이터셋", "리소스", "메타데이터"],
-        url: "https://guides.data.gouv.fr/guides/producteurs/publier-des-donnees-sur-data.gouv.fr",
-      },
-      {
-        title: "데이터 품질 개선",
-        titleFr: "Améliorer la qualité des données",
-        desc: "파일 형식(CSV·JSON·Parquet), 인코딩, 날짜 표준화, 결측치 처리 등 데이터 품질을 높이기 위한 실무 지침을 제공합니다. schema.data.gouv.fr 표준 스키마 연동 방법도 포함합니다.",
-        tags: ["CSV", "품질", "스키마"],
-        url: "https://guides.data.gouv.fr/guides/producteurs/ameliorer-la-qualite-des-donnees",
-      },
-      {
-        title: "데이터 스키마 활용",
-        titleFr: "Utiliser les schémas de données",
-        desc: "공통 지역 데이터 기반(Socle Commun des Données Locales) 및 schema.data.gouv.fr에서 제공하는 검증된 표준 스키마를 채택해 데이터 상호운용성을 높이는 방법을 설명합니다.",
-        tags: ["스키마", "표준화", "상호운용성"],
-        url: "https://guides.data.gouv.fr/guides/producteurs/utiliser-les-schemas-de-donnees",
-      },
-    ],
-  },
-  {
-    group: "데이터 활용자",
-    groupIcon: Code2,
-    groupColor: "text-green-700 dark:text-green-400",
-    groupBg: "bg-green-50 dark:bg-green-950/20",
-    groupBorder: "border-green-200 dark:border-green-800",
-    items: [
-      {
-        title: "data.gouv.fr API 활용하기",
-        titleFr: "Utiliser l'API de data.gouv.fr",
-        desc: "REST API 엔드포인트 구조, 인증 방식, 페이지네이션, 데이터셋·리소스·조직 검색 쿼리 예제를 상세히 제공합니다. OpenAPI(Swagger) 문서 기반으로 모든 엔드포인트를 직접 테스트할 수 있습니다.",
-        tags: ["REST API", "OpenAPI", "JSON"],
-        url: "https://guides.data.gouv.fr/guides/reutilisateurs/utiliser-lapi-de-data.gouv.fr",
-      },
-      {
-        title: "데이터셋 탐색 및 다운로드",
-        titleFr: "Exploiter les données de data.gouv.fr",
-        desc: "포털 검색 필터, 태그·조직·라이선스별 필터링, 리소스 미리보기, 대용량 파일 다운로드 최적화, 자동 업데이트 알림 구독 방법을 안내합니다.",
-        tags: ["검색", "다운로드", "필터"],
-        url: "https://guides.data.gouv.fr/guides/reutilisateurs/exploiter-les-donnees",
-      },
-      {
-        title: "MCP로 AI 에이전트 연동하기",
-        titleFr: "Connecter un agent IA via MCP",
-        desc: "data.gouv.fr의 MCP(Model Context Protocol) 서버 엔드포인트를 통해 LLM 에이전트가 공공데이터를 직접 검색·조회하는 방법을 설명합니다. Claude, GPT-4, Mistral 등과의 연동 예제 포함.",
-        tags: ["MCP", "AI", "LLM"],
-        url: "https://guides.data.gouv.fr/guides/reutilisateurs/connecter-un-agent-ia-via-mcp",
-        highlight: true,
-      },
-    ],
-  },
-  {
-    group: "법적·라이선스",
+    group: "법적 가이드",
+    groupFr: "Guide juridique",
     groupIcon: Scale,
     groupColor: "text-purple-600 dark:text-purple-400",
     groupBg: "bg-purple-50 dark:bg-purple-950/20",
     groupBorder: "border-purple-200 dark:border-purple-800",
+    groupUrl: "https://guides.data.gouv.fr/guides/guide-juridique",
     items: [
       {
-        title: "라이선스 선택 가이드",
-        titleFr: "Choisir une licence",
-        desc: "Licence Ouverte(Etalab), ODbL, Creative Commons 등 주요 오픈데이터 라이선스의 허용 범위·제약 조건·상업적 이용 가능 여부를 비교합니다. 공공기관 의무 라이선스 규정도 안내합니다.",
-        tags: ["라이선스", "저작권", "재사용"],
-        url: "https://guides.data.gouv.fr/guides/juridique/choisir-une-licence",
+        title: "데이터 생산자를 위한 법률 가이드",
+        titleFr: "Guide juridique — producteurs de données",
+        desc: "공공데이터 공개 의무 범위, 재사용 라이선스(Licence Ouverte·ODbL) 선택 기준, 개인정보 포함 데이터 처리 시 RGPD 준수 방법을 단계별로 설명합니다.",
+        tags: ["Licence Ouverte", "RGPD", "공개 의무"],
+        url: "https://guides.data.gouv.fr/guides/guide-juridique/producteurs-de-donnees",
       },
       {
-        title: "개인정보 처리 및 익명화",
-        titleFr: "Données personnelles et anonymisation",
-        desc: "RGPD(EU 개인정보보호법) 준수를 위한 데이터 게시 전 체크리스트, k-익명성·차등 프라이버시 등 익명화 기법, CNIL(프랑스 개인정보보호위원회) 가이드라인을 정리합니다.",
-        tags: ["RGPD", "익명화", "CNIL"],
-        url: "https://guides.data.gouv.fr/guides/juridique/donnees-personnelles",
+        title: "데이터 활용자를 위한 법률 가이드",
+        titleFr: "Guide juridique — réutilisateurs de données",
+        desc: "공공데이터 재활용 시 준수해야 할 라이선스 조건, 상업적 이용 가능 여부, 원본 출처 표기 방법, 저작권 예외 케이스를 정리합니다.",
+        tags: ["재사용 조건", "출처 표기", "상업적 이용"],
+        url: "https://guides.data.gouv.fr/guides/guide-juridique/reutilisateurs-de-donnees",
+      },
+      {
+        title: "프랑스 오픈데이터 역사 연대표",
+        titleFr: "Chronologie de l'open data",
+        desc: "2011년 data.gouv.fr 설립부터 2016년 디지털 공화국법, 2024년 MCP 도입까지 프랑스 오픈데이터 정책의 주요 이정표를 시간순으로 정리합니다.",
+        tags: ["역사", "정책", "법제도"],
+        url: "https://guides.data.gouv.fr/guides/guide-juridique/chronologie-de-lopen-data",
       },
     ],
   },
   {
-    group: "플랫폼 관리자",
+    group: "데이터 품질 가이드",
+    groupFr: "Guide qualité",
+    groupIcon: Database,
+    groupColor: "text-blue-600 dark:text-blue-400",
+    groupBg: "bg-blue-50 dark:bg-blue-950/20",
+    groupBorder: "border-blue-200 dark:border-blue-800",
+    groupUrl: "https://guides.data.gouv.fr/guides/guide-qualite",
+    items: [
+      {
+        title: "품질 높은 데이터셋 준비하기",
+        titleFr: "Préparer un jeu de données de qualité",
+        desc: "파일 형식(CSV·JSON·Parquet) 선택, 인코딩(UTF-8), 날짜 표준화(ISO 8601), 결측치 표기 규칙, 컬럼 명칭 명확화 등 데이터 게시 전 체크리스트를 제공합니다.",
+        tags: ["CSV", "UTF-8", "ISO 8601"],
+        url: "https://guides.data.gouv.fr/guides/guide-qualite/preparer-un-jeu-de-donnees-de-qualite",
+      },
+      {
+        title: "데이터 문서화 방법",
+        titleFr: "Documenter des données",
+        desc: "데이터셋 제목·설명·태그 작성 요령, 리소스별 메타데이터 표기, 갱신 주기·출처·연락처 등 DCAT 호환 메타데이터 필드 채우는 방법을 안내합니다.",
+        tags: ["메타데이터", "DCAT", "문서화"],
+        url: "https://guides.data.gouv.fr/guides/guide-qualite/documenter-des-donnees",
+      },
+      {
+        title: "데이터 스키마 활용하기",
+        titleFr: "Maîtriser les schémas de données",
+        desc: "schema.data.gouv.fr에서 제공하는 표준 스키마를 채택해 여러 기관 데이터를 자동 병합·검증하는 방법을 설명합니다. TableSchema·JSON Schema 기반 유효성 검사 도구 활용법 포함.",
+        tags: ["schema.data.gouv.fr", "TableSchema", "검증"],
+        url: "https://guides.data.gouv.fr/guides/guide-qualite/maitriser-les-schemas-de-donnees",
+      },
+    ],
+  },
+  {
+    group: "데이터 활용하기",
+    groupFr: "Réutiliser des données",
+    groupIcon: Code2,
+    groupColor: "text-green-700 dark:text-green-400",
+    groupBg: "bg-green-50 dark:bg-green-950/20",
+    groupBorder: "border-green-200 dark:border-green-800",
+    groupUrl: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees",
+    items: [
+      {
+        title: "오픈데이터 입문",
+        titleFr: "Introduction à l'open data",
+        desc: "오픈데이터의 정의·유형·법적 근거, data.gouv.fr 포털 검색 및 다운로드 방법, 라이선스 확인 절차를 처음 접하는 사람 기준으로 쉽게 설명합니다.",
+        tags: ["입문", "검색", "다운로드"],
+        url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/introduction-a-lopen-data",
+      },
+      {
+        title: "데이터 처리·분석 가이드",
+        titleFr: "Guide traitement et analyse de données",
+        desc: "Python·R을 활용한 CSV 파일 전처리, 결합·필터링·집계, 시각화, Jupyter Notebook 연동까지 실무 데이터 분석 워크플로우를 단계별 코드 예제와 함께 안내합니다.",
+        tags: ["Python", "R", "분석"],
+        url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/guide-traitement-et-analyse-de-donnees",
+      },
+      {
+        title: "지리정보 API 활용",
+        titleFr: "Utiliser les API géographiques",
+        desc: "api-adresse.data.gouv.fr(주소 검색), api.gouv.fr/les-api 카탈로그, 행정구역·지적도 API 등 프랑스 공공 지리정보 API를 지도·GIS 프로젝트에 연동하는 방법을 설명합니다.",
+        tags: ["API", "GIS", "지도"],
+        url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/utiliser-les-api-geographiques",
+      },
+    ],
+  },
+  {
+    group: "행정기관 도구",
+    groupFr: "Outils pour les administrations",
     groupIcon: Users,
     groupColor: "text-orange-600 dark:text-orange-400",
     groupBg: "bg-orange-50 dark:bg-orange-950/20",
     groupBorder: "border-orange-200 dark:border-orange-800",
+    groupUrl: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations",
     items: [
       {
-        title: "조직 관리하기",
-        titleFr: "Gérer une organisation",
-        desc: "조직(기관) 프로필 생성, 구성원 초대·권한 관리, 데이터셋 소유권 이전, 조직 배지(인증) 신청 절차를 안내합니다. 공공기관 전용 인증 배지 획득 방법도 포함합니다.",
-        tags: ["조직", "권한", "인증"],
-        url: "https://guides.data.gouv.fr/guides/administrateurs/gerer-une-organisation",
+        title: "API 원칙과 설계 가이드",
+        titleFr: "Doctrine des API",
+        desc: "프랑스 디지털 정부의 API 설계 원칙: REST·OpenAPI 표준 준수, 버전 관리, 인증(OAuth2·API 키), 속도 제한, api.gouv.fr 카탈로그 등록 절차를 정리합니다.",
+        tags: ["REST", "OpenAPI", "OAuth2"],
+        url: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations/doctrine-des-api",
       },
       {
-        title: "재사용 사례(Réutilisation) 등록",
-        titleFr: "Référencer une réutilisation",
-        desc: "공공데이터를 활용해 만든 앱·분석·시각화·보고서를 포털에 등록하는 방법을 설명합니다. 재사용 사례 등록은 데이터 공급자에게 피드백을 전달하고 커뮤니티 가시성을 높이는 역할을 합니다.",
-        tags: ["재사용", "커뮤니티", "등록"],
-        url: "https://guides.data.gouv.fr/guides/administrateurs/referencer-une-reutilisation",
+        title: "DataPass — API 인가 신청 도구",
+        titleFr: "DataPass — outil d'habilitations",
+        desc: "민감 데이터 API(FranceConnect, API Entreprise 등) 접근 인가를 온라인으로 신청·심사·발급하는 DataPass 플랫폼 사용 방법을 안내합니다. 공공기관·기업 담당자 모두 해당.",
+        tags: ["DataPass", "인가", "민감 데이터"],
+        url: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations/datapass-outil-dhabilitations",
+      },
+      {
+        title: "API Entreprise·API Particulier 활용",
+        titleFr: "API Entreprise et API Particulier",
+        desc: "기업정보(SIRENE·INPI), 세금 납부 현황, 사회보험 자격 등을 실시간 조회하는 API Entreprise와 시민 개인 정보를 행정 서류 없이 확인하는 API Particulier 연동 가이드입니다.",
+        tags: ["API Entreprise", "SIRENE", "행정"],
+        url: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations/bouquets-api-entreprise-et-api-particulier",
       },
     ],
   },
@@ -707,10 +728,19 @@ export default function About() {
               const GroupIcon = group.groupIcon;
               return (
                 <div key={group.group}>
-                  <div className={`flex items-center gap-2 mb-4`}>
+                  <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <GroupIcon className={`h-5 w-5 ${group.groupColor}`} />
                     <h3 className={`font-semibold text-lg ${group.groupColor}`}>{group.group}</h3>
+                    <span className="text-xs text-muted-foreground italic">— {group.groupFr}</span>
                     <Badge variant="outline" className="text-xs ml-1">{group.items.length}개</Badge>
+                    <a
+                      href={group.groupUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`ml-auto text-xs flex items-center gap-1 ${group.groupColor} hover:underline`}
+                    >
+                      전체 보기 <ArrowUpRight className="h-3 w-3" />
+                    </a>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -720,11 +750,7 @@ export default function About() {
                         href={guide.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`group flex flex-col rounded-xl border p-4 transition-all hover:shadow-md hover:-translate-y-0.5 ${
-                          guide.highlight
-                            ? `${group.groupBorder} ${group.groupBg}`
-                            : "bg-card border-border hover:border-primary/30"
-                        }`}
+                        className="group flex flex-col rounded-xl border bg-card p-4 transition-all hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30"
                       >
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex-1">
@@ -751,11 +777,6 @@ export default function About() {
                               {tag}
                             </span>
                           ))}
-                          {guide.highlight && (
-                            <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium ml-auto">
-                              신기능
-                            </span>
-                          )}
                         </div>
 
                         <div className={`mt-3 pt-3 border-t flex items-center gap-1 text-xs ${group.groupColor} font-medium`}>

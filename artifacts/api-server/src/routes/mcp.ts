@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import axios from "axios";
+import OpenAI from "openai";
 import { rateLimit } from "express-rate-limit";
 
 const router: IRouter = Router();
@@ -12,12 +13,15 @@ const mcpRateLimit = rateLimit({
   message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도하세요." },
 });
 
-const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
-const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 const MCP_ENDPOINT = "https://mcp.data.gouv.fr/mcp";
 const DATAGOUV_BASE_URL = "https://www.data.gouv.fr/api/1";
-const MODEL = "MiniMax-M1";
+const MODEL = "gpt-4.1-mini";
 
+// OpenAI client via Replit AI Integrations proxy
+const openai = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+});
 
 export const MCP_TOOLS_META = [
   {
@@ -94,135 +98,49 @@ export const MCP_TOOLS_META = [
   },
 ];
 
-const MINIMAX_TOOL_DEFS = [
-  {
-    type: "function" as const,
-    function: {
-      name: "search_datasets",
-      description: "Search for datasets on data.gouv.fr by keyword. Returns titles, organizations, tags, and resource counts.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query (use French or English keywords for best results)" },
-          page_size: { type: "integer", description: "Number of results (default 5, max 20)", default: 5 },
-        },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "search_dataservices",
-      description: "Search for data services (APIs) on data.gouv.fr.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query" },
-          page_size: { type: "integer", default: 5 },
-        },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_dataset_info",
-      description: "Get detailed information about a specific dataset including all its resources.",
-      parameters: {
-        type: "object",
-        properties: {
-          dataset_id: { type: "string", description: "Dataset ID from search results" },
-        },
-        required: ["dataset_id"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_dataset_resources",
-      description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).",
-      parameters: {
-        type: "object",
-        properties: {
-          dataset_id: { type: "string", description: "Dataset ID" },
-          page_size: { type: "integer", default: 10 },
-        },
-        required: ["dataset_id"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_resource_info",
-      description: "Get details about a specific resource file including format, size, URL, schema.",
-      parameters: {
-        type: "object",
-        properties: {
-          dataset_id: { type: "string", description: "Dataset ID" },
-          resource_id: { type: "string", description: "Resource ID" },
-        },
-        required: ["dataset_id", "resource_id"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "query_resource_data",
-      description: "Query tabular data (CSV/XLS) from a resource directly. Use for exploring actual data values.",
-      parameters: {
-        type: "object",
-        properties: {
-          resource_id: { type: "string", description: "Resource ID" },
-          limit: { type: "integer", description: "Number of rows to return", default: 10 },
-        },
-        required: ["resource_id"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_dataservice_info",
-      description: "Get details about a specific API data service.",
-      parameters: {
-        type: "object",
-        properties: {
-          dataservice_id: { type: "string" },
-        },
-        required: ["dataservice_id"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_metrics",
-      description: "Get overall portal statistics (total datasets, organizations, reuses counts).",
-      parameters: { type: "object", properties: {}, required: [] },
-    },
-  },
-];
+// Parse SSE-format response from MCP server
+function parseMcpSseResponse(rawText: string): unknown {
+  const lines = rawText.split("\n");
+  for (const line of lines) {
+    if (line.startsWith("data: ")) {
+      try {
+        return JSON.parse(line.slice(6));
+      } catch {
+        // continue
+      }
+    }
+  }
+  return null;
+}
 
 async function callMcpTool(name: string, args: Record<string, unknown>): Promise<string> {
   try {
     const res = await axios.post(
       MCP_ENDPOINT,
       { jsonrpc: "2.0", method: "tools/call", params: { name, arguments: args }, id: Date.now() },
-      { headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, timeout: 15000 }
-    );
-    if (res.data?.result) {
-      const content = res.data.result?.content;
-      if (Array.isArray(content)) {
-        return content.map((c: { text?: string; type?: string }) => c.text ?? JSON.stringify(c)).join("\n");
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        responseType: "text",
+        timeout: 15000,
       }
-      return JSON.stringify(res.data.result);
+    );
+
+    const parsed = parseMcpSseResponse(res.data as string) as { result?: { content?: Array<{ text?: string; type?: string }>; isError?: boolean }; error?: { message?: string } } | null;
+
+    if (parsed?.result && !parsed.result.isError) {
+      const content = parsed.result.content;
+      if (Array.isArray(content)) {
+        return content.map((c) => c.text ?? JSON.stringify(c)).join("\n");
+      }
+      return JSON.stringify(parsed.result);
     }
-    throw new Error(res.data?.error?.message ?? "MCP error");
+    if (parsed?.error) {
+      throw new Error(parsed.error.message ?? "MCP error");
+    }
+    throw new Error("Empty MCP response");
   } catch {
     return await callFallbackApi(name, args);
   }
@@ -302,32 +220,160 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
   }
 }
 
+const OPENAI_TOOL_DEFS: OpenAI.ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "search_datasets",
+      description: "Search for datasets on data.gouv.fr by keyword. Returns titles, organizations, tags, and resource counts.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query in French or English for best results" },
+          page_size: { type: "integer", description: "Number of results (default 5, max 20)" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_dataservices",
+      description: "Search for data services (APIs) on data.gouv.fr.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string" },
+          page_size: { type: "integer" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_dataset_info",
+      description: "Get detailed information about a specific dataset including all its resources.",
+      parameters: {
+        type: "object",
+        properties: {
+          dataset_id: { type: "string", description: "Dataset ID from search results" },
+        },
+        required: ["dataset_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_dataset_resources",
+      description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).",
+      parameters: {
+        type: "object",
+        properties: {
+          dataset_id: { type: "string" },
+          page_size: { type: "integer" },
+        },
+        required: ["dataset_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_resource_info",
+      description: "Get details about a specific resource file including format, size, URL, schema.",
+      parameters: {
+        type: "object",
+        properties: {
+          dataset_id: { type: "string" },
+          resource_id: { type: "string" },
+        },
+        required: ["dataset_id", "resource_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_resource_data",
+      description: "Query tabular data (CSV/XLS) from a resource. Use for exploring actual data values.",
+      parameters: {
+        type: "object",
+        properties: {
+          resource_id: { type: "string" },
+          limit: { type: "integer" },
+        },
+        required: ["resource_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_dataservice_info",
+      description: "Get details about a specific API data service.",
+      parameters: {
+        type: "object",
+        properties: {
+          dataservice_id: { type: "string" },
+        },
+        required: ["dataservice_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_metrics",
+      description: "Get overall portal statistics (total datasets, organizations, reuses counts).",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+];
+
 router.get("/mcp/tools", (_req, res) => {
   res.json({ tools: MCP_TOOLS_META, model: MODEL, mcpEndpoint: MCP_ENDPOINT, status: "active" });
 });
 
 router.get("/mcp/health", async (_req, res) => {
-  const checks = await Promise.allSettled([
+  const [datagouv, mcp] = await Promise.allSettled([
     axios.get(`${DATAGOUV_BASE_URL}/site/`, { timeout: 5000 }),
-    axios.post(MCP_ENDPOINT, { jsonrpc: "2.0", method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "france-opendata", version: "1.0" } }, id: 1 }, { headers: { "Content-Type": "application/json" }, timeout: 5000 }),
+    axios.post(
+      MCP_ENDPOINT,
+      {
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "france-opendata", version: "1.0" } },
+        id: 1,
+      },
+      {
+        headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+        responseType: "text",
+        timeout: 6000,
+      }
+    ),
   ]);
+
+  let mcpOk = false;
+  if (mcp.status === "fulfilled") {
+    const parsed = parseMcpSseResponse(mcp.value.data as string) as { result?: unknown } | null;
+    mcpOk = !!parsed?.result;
+  }
+
+  const aiOk = !!(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+
   res.json({
-    status: checks.every((c) => c.status === "fulfilled") ? "ok" : "degraded",
-    datagouv: checks[0].status === "fulfilled" ? "ok" : "unreachable",
-    mcp: checks[1].status === "fulfilled" ? "ok" : "unreachable",
-    minimax: MINIMAX_API_KEY ? "configured" : "missing",
+    status: datagouv.status === "fulfilled" && mcpOk && aiOk ? "ok" : "degraded",
+    datagouv: datagouv.status === "fulfilled" ? "ok" : "unreachable",
+    mcp: mcpOk ? "ok" : "unreachable",
+    minimax: aiOk ? "configured" : "missing",
     model: MODEL,
     mcpEndpoint: MCP_ENDPOINT,
   });
 });
-
-type MinimaxMessage = {
-  role: "system" | "user" | "assistant" | "tool";
-  content?: string;
-  tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
-  tool_call_id?: string;
-  name?: string;
-};
 
 router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   const rawQuery = req.body?.query;
@@ -339,8 +385,8 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
     res.status(400).json({ error: "query가 너무 깁니다. 500자 이내로 입력하세요." });
     return;
   }
-  if (!MINIMAX_API_KEY) {
-    res.status(500).json({ error: "AI API 키가 설정되지 않았습니다." });
+  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
+    res.status(500).json({ error: "AI API가 설정되지 않았습니다." });
     return;
   }
 
@@ -357,17 +403,17 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   };
 
   const systemPrompt = `당신은 프랑스 공공데이터 포털(data.gouv.fr) 전문가이자 대한민국 공공데이터 정책 자문관입니다.
-사용자의 자연어 질문을 이해하고, 제공된 MCP 도구를 사용해 data.gouv.fr에서 관련 데이터를 검색·조회하세요.
+사용자의 자연어 질문을 이해하고, 제공된 도구를 사용해 data.gouv.fr에서 관련 데이터를 검색·조회하세요.
 필요한 도구를 순서대로 호출하여 충분한 정보를 수집한 후, 한국어로 구조화된 분석을 제공하세요.
 
 응답 원칙:
 - 모든 응답은 한국어로 작성
 - 마크다운 형식으로 구조화된 분석 제공
-- 실무적이고 구체적인 정책 제언 포함
+- 실무적이고 구체적인 내용 포함
 - 발견한 데이터셋의 ID와 제목을 명시
 - 바로 활용 가능한 리소스(표·CSV)가 있으면 강조`;
 
-  const messages: MinimaxMessage[] = [
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
     { role: "user", content: query },
   ];
@@ -375,37 +421,29 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   try {
     send("status", { step: "thinking", message: "MCP 도구를 선택하고 데이터를 수집 중..." });
 
-    const MAX_LOOPS = 5;
+    const MAX_LOOPS = 6;
     let loops = 0;
     let toolCallCount = 0;
 
+    // Agentic tool-call loop
     while (loops < MAX_LOOPS) {
       loops++;
 
-      const callRes = await axios.post(
-        `${MINIMAX_BASE_URL}/chat/completions`,
-        {
-          model: MODEL,
-          messages,
-          tools: MINIMAX_TOOL_DEFS,
-          tool_choice: loops === MAX_LOOPS ? "none" : "auto",
-          max_tokens: 4096,
-          temperature: 0.3,
-          stream: false,
-        },
-        {
-          headers: { Authorization: `Bearer ${MINIMAX_API_KEY}`, "Content-Type": "application/json" },
-          timeout: 60000,
-        }
-      );
+      const response = await openai.chat.completions.create({
+        model: MODEL,
+        messages,
+        tools: OPENAI_TOOL_DEFS,
+        tool_choice: loops >= MAX_LOOPS ? "none" : "auto",
+        max_completion_tokens: 4096,
+      });
 
-      const choice = callRes.data?.choices?.[0];
-      if (!choice) break;
+      const choice = response.choices[0];
+      if (!choice?.message) break;
 
       const assistantMsg = choice.message;
-      messages.push(assistantMsg as MinimaxMessage);
+      messages.push(assistantMsg);
 
-      if (!assistantMsg?.tool_calls || assistantMsg.tool_calls.length === 0) {
+      if (!assistantMsg.tool_calls || assistantMsg.tool_calls.length === 0) {
         break;
       }
 
@@ -427,7 +465,6 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
         messages.push({
           role: "tool",
           tool_call_id: toolCall.id,
-          name: toolName,
           content: result,
         });
       }
@@ -435,53 +472,24 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
 
     send("status", { step: "thinking", message: "분석 결과 작성 중..." });
 
-    const streamRes = await axios.post(
-      `${MINIMAX_BASE_URL}/chat/completions`,
-      {
-        model: MODEL,
-        messages,
-        max_tokens: 3000,
-        temperature: 0.6,
-        thinking: { type: "enabled", budget_tokens: 1024 },
-        stream: true,
-      },
-      {
-        headers: { Authorization: `Bearer ${MINIMAX_API_KEY}`, "Content-Type": "application/json", Accept: "text/event-stream" },
-        responseType: "stream",
-        timeout: 90000,
-      }
-    );
-
-    let buffer = "";
-    await new Promise<void>((resolve, reject) => {
-      streamRes.data.on("data", (chunk: Buffer) => {
-        buffer += chunk.toString("utf-8");
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === "data: [DONE]") continue;
-          if (!trimmed.startsWith("data: ")) continue;
-          try {
-            const json = JSON.parse(trimmed.slice(6)) as {
-              choices?: Array<{ delta?: { content?: string; thinking_content?: string }; finish_reason?: string | null }>;
-            };
-            const delta = json.choices?.[0]?.delta;
-            if (!delta) continue;
-            if (delta.thinking_content) send("thinking", { content: delta.thinking_content });
-            if (delta.content) send("content", { content: delta.content });
-          } catch { /* skip */ }
-        }
-      });
-      streamRes.data.on("end", resolve);
-      streamRes.data.on("error", reject);
+    // Streaming final answer
+    const stream = await openai.chat.completions.create({
+      model: MODEL,
+      messages,
+      max_completion_tokens: 3000,
+      stream: true,
     });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) send("content", { content });
+    }
 
     send("done", {});
     res.end();
   } catch (err) {
-    req.log.error({ err }, "MCP search error");
-    send("error", { message: "분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." });
+    const msg = (err as Error).message ?? "알 수 없는 오류";
+    send("error", { message: `분석 중 오류가 발생했습니다: ${msg}` });
     res.end();
   }
 });

@@ -444,7 +444,7 @@ export default function Home() {
                       },
                       {
                         label: "연결 모델",
-                        value: "MiniMax-M1",
+                        value: mcpHealth?.model ?? "GPT-4.1 Mini",
                         icon: Cpu,
                         status: mcpHealth ? mcpHealth.minimax === "configured" : null,
                         statusLabel: mcpHealth ? (mcpHealth.minimax === "configured" ? "API 설정됨" : "미설정") : "미확인",
@@ -651,7 +651,7 @@ export default function Home() {
                         )}
                       </div>
                       <CardDescription>
-                        MiniMax-M1 · MCP 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
+                        GPT-4.1 Mini + MCP · 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
