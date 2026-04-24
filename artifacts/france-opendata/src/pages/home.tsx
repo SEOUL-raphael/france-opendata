@@ -317,8 +317,7 @@ export default function Home() {
             프랑스 공공데이터 생태계 탐색
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-            검색어를 입력하면 MCP 도구가 data.gouv.fr API를 호출해 데이터셋을 수집하고,
-            Minimax AI가 1회 추론 루프로 한국 정책결정자를 위한 시사점을 실시간으로 분석합니다.
+            대한민국 정책결정자를 위한 프랑스 공공데이터 포털 벤치마킹 레퍼런스 도구
           </p>
 
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto mt-6 relative">

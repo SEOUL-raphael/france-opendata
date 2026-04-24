@@ -1,8 +1,27 @@
-import { ExternalLink, Building2, HardDrive, Users, Loader2, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  ExternalLink,
+  Building2,
+  HardDrive,
+  Users,
+  Loader2,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Search,
+} from "lucide-react";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useSearchOrganizations } from "@/hooks/use-datagouv";
 import type { DGOrganization } from "@/types/datagouv";
 
@@ -148,9 +167,145 @@ function ActiveOrgCard({ org }: { org: DGOrganization }) {
   );
 }
 
-export default function Organizations() {
-  const { data: topOrgs, isLoading } = useSearchOrganizations("gouvernement");
+function FullOrgList() {
+  const [expanded, setExpanded] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [allOrgs, setAllOrgs] = useState<DGOrganization[]>([]);
 
+  const { data, isLoading, isFetching } = useSearchOrganizations(activeSearch, page);
+
+  useEffect(() => {
+    if (!expanded) return;
+    if (data?.data) {
+      if (page === 1) {
+        setAllOrgs(data.data);
+      } else {
+        setAllOrgs((prev) => {
+          const ids = new Set(prev.map((o) => o.id));
+          return [...prev, ...data.data.filter((o: DGOrganization) => !ids.has(o.id))];
+        });
+      }
+    }
+  }, [data, page, expanded]);
+
+  const handleToggle = () => {
+    if (!expanded) {
+      setPage(1);
+      setAllOrgs([]);
+      setActiveSearch("");
+      setSearchInput("");
+    }
+    setExpanded((v) => !v);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setAllOrgs([]);
+    setActiveSearch(searchInput.trim());
+  };
+
+  const loadMore = () => setPage((p) => p + 1);
+
+  return (
+    <div className="border rounded-xl overflow-hidden">
+      {/* Toggle header */}
+      <button
+        onClick={handleToggle}
+        className="w-full flex items-center justify-between px-6 py-4 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+      >
+        <div>
+          <span className="font-semibold text-base">전체 기관 목록</span>
+          <span className="ml-2 text-sm text-muted-foreground">
+            data.gouv.fr API 실시간 연동 · 6,000+ 기관
+          </span>
+        </div>
+        {expanded ? (
+          <ChevronUp className="h-5 w-5 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="p-5 border-t">
+          {/* Search */}
+          <form onSubmit={handleSearch} className="flex gap-2 mb-5 max-w-md">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="기관명 검색 (예: ministere, paris, etalab...)"
+                className="pl-9"
+              />
+            </div>
+            <Button type="submit" variant="secondary">
+              검색
+            </Button>
+          </form>
+
+          {/* Total count */}
+          {data?.total != null && (
+            <p className="text-xs text-muted-foreground mb-4">
+              총{" "}
+              <strong className="text-foreground">{data.total.toLocaleString()}개</strong> 기관 ·
+              현재 {allOrgs.length}개 표시
+            </p>
+          )}
+
+          {/* First load spinner */}
+          {isLoading && page === 1 ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {allOrgs.map((org) => (
+                  <ActiveOrgCard key={org.id} org={org} />
+                ))}
+              </div>
+
+              {data?.next_page && (
+                <div className="mt-6 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={loadMore}
+                    disabled={isFetching}
+                    className="min-w-[180px]"
+                  >
+                    {isFetching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        불러오는 중...
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        더 보기 ({allOrgs.length} / {data?.total ?? "?"})
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {!data?.next_page && allOrgs.length > 0 && (
+                <p className="mt-5 text-center text-xs text-muted-foreground">
+                  전체 {allOrgs.length}개 기관을 모두 불러왔습니다.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Organizations() {
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 py-10">
       {/* Header */}
@@ -184,7 +339,7 @@ export default function Organizations() {
       </div>
 
       {/* Featured Organizations */}
-      <section className="mb-12">
+      <section className="mb-10">
         <h2 className="text-xl font-semibold mb-1">핵심 기관 소개</h2>
         <p className="text-sm text-muted-foreground mb-5">
           데이터 공개 정책·규모·영향력 측면에서 주목할 만한 기관들입니다.
@@ -196,45 +351,8 @@ export default function Organizations() {
         </div>
       </section>
 
-      {/* Dynamically loaded active orgs */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-1">최근 활동 기관 (샘플)</h2>
-        <p className="text-sm text-muted-foreground mb-5">
-          data.gouv.fr API에서 실시간으로 조회한 활성 기관 목록입니다.
-        </p>
-        {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {topOrgs?.data?.slice(0, 8).map((org: DGOrganization) => (
-              <ActiveOrgCard key={org.id} org={org} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* External Link CTA */}
-      <div className="rounded-xl border bg-muted/20 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <h3 className="font-semibold text-lg mb-1">전체 6,000+ 기관 탐색하기</h3>
-          <p className="text-sm text-muted-foreground">
-            data.gouv.fr에서 기관명·유형·데이터셋 수 기준으로 검색하고 상세 정보를 확인할 수
-            있습니다.
-          </p>
-        </div>
-        <Button asChild size="lg" className="shrink-0">
-          <a
-            href="https://www.data.gouv.fr/fr/organizations/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2"
-          >
-            data.gouv.fr 바로가기 <ExternalLink className="h-4 w-4" />
-          </a>
-        </Button>
-      </div>
+      {/* Full list expand/collapse */}
+      <FullOrgList />
     </div>
   );
 }
