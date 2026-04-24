@@ -6,12 +6,6 @@ import {
   Quote,
   ShieldCheck,
   ExternalLink,
-  Zap,
-  Leaf,
-  TrendingUp,
-  MapPin,
-  GraduationCap,
-  HeartPulse,
   Code2,
   BookOpen,
   Users,
@@ -32,189 +26,105 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const USE_CASES = [
   {
-    category: "안전·행정",
-    icon: Zap,
-    color: "text-red-500",
-    bg: "bg-red-50 dark:bg-red-950/20",
-    border: "border-red-200 dark:border-red-800",
-    items: [
-      {
-        name: "응급 출동 위치 정확화",
-        original: "La prise d'appel des secours",
-        description:
-          "소방·응급 신고 센터에서 전국 주소 데이터베이스(BAN)를 활용해 출동 위치를 정확히 파악합니다. 주소 오류로 인한 골든타임 손실을 줄이는 데 기여하고 있습니다.",
-        dataUsed: "전국 주소 데이터베이스 (BAN)",
-        impact: "골든타임 확보",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/prise_d_appel_des_secours/",
-      },
-      {
-        name: "환경 위험·오염 현황 파악",
-        original: "ERRIAL",
-        description:
-          "토지 거래 전 해당 부지의 환경 오염, 자연재해 위험, 산업시설 인접 여부 등을 데이터로 즉시 확인할 수 있는 서비스입니다. 부동산 전문가와 시민 모두 이용 가능합니다.",
-        dataUsed: "환경 위험 데이터, 산업시설 데이터",
-        impact: "부동산 의사결정 지원",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/errial/",
-      },
-    ],
+    name: "출동 위치 정밀 파악",
+    original: "La prise d'appel des secours",
+    description:
+      "소방·응급 신고 센터에서 전국 주소 데이터베이스(BAN)를 활용해 출동 위치를 정확히 특정합니다. 주소 오류로 인한 골든타임 손실을 최소화해 구조 성공률을 높입니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/prise_d_appel_des_secours/",
   },
   {
-    category: "경제·부동산",
-    icon: TrendingUp,
-    color: "text-blue-500",
-    bg: "bg-blue-50 dark:bg-blue-950/20",
-    border: "border-blue-200 dark:border-blue-800",
-    items: [
-      {
-        name: "경영 위기 기업 조기 탐지",
-        original: "Signaux Faibles",
-        description:
-          "SIRENE(기업등록) 데이터, 세금 납부 현황, 고용보험 정보 등을 결합해 경영 위기에 처한 기업을 조기에 탐지합니다. 공무원이 선제적으로 지원책을 제안할 수 있게 합니다.",
-        dataUsed: "SIRENE, 세금 데이터, 고용보험 데이터",
-        impact: "기업 도산 예방",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/signaux-faibles/",
-      },
-      {
-        name: "부동산 실거래가 공개 (DVF)",
-        original: "Données de valeur foncière",
-        description:
-          "프랑스 전역의 부동산 실거래 가격 데이터를 공개합니다. 시민, 부동산 전문가, 연구자 등이 지역별·유형별 실거래가를 자유롭게 분석할 수 있습니다.",
-        dataUsed: "토지·건물 실거래 데이터",
-        impact: "부동산 시장 투명성 제고",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/dvf/",
-      },
-      {
-        name: "주유소 실시간 유가 공개",
-        original: "Prix des carburants",
-        description:
-          "프랑스 전국 1만여 개 주유소의 실시간 유가를 공개합니다. 소비자 앱, 지도 서비스, 언론 등 수백 개 서비스가 이 데이터를 재활용합니다.",
-        dataUsed: "에너지부 주유소 가격 데이터",
-        impact: "소비자 후생 개선",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/prix-carburants/",
-      },
-      {
-        name: "기업 정보 통합 검색",
-        original: "Annuaire des entreprises",
-        description:
-          "SIRENE 데이터 기반의 기업 정보 검색 포털입니다. 사업자 등록번호(SIRET/SIREN) 검색으로 기업의 업종, 규모, 법적 형태, 대표자 등을 즉시 확인할 수 있습니다.",
-        dataUsed: "SIRENE (기업 등록 데이터베이스)",
-        impact: "행정 절차 간소화",
-        url: "https://annuaire-entreprises.data.gouv.fr/",
-      },
-    ],
+    name: "도시 수목 유산 파악",
+    original: "Nos Villes Vertes",
+    description:
+      "지자체가 공개한 수목 데이터를 활용해 시민이 자신의 지역 나무 종류·나이·위치를 지도로 확인합니다. 도시 녹지 정책 수립과 탄소 흡수량 산정에 활용됩니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/nos-villes-vertes/",
   },
   {
-    category: "환경·도시",
-    icon: Leaf,
-    color: "text-green-600",
-    bg: "bg-green-50 dark:bg-green-950/20",
-    border: "border-green-200 dark:border-green-800",
-    items: [
-      {
-        name: "도시 수목 유산 파악",
-        original: "Nos Villes Vertes",
-        description:
-          "지자체가 공개한 수목 데이터를 활용해 시민이 자신이 사는 지역의 나무 종류, 나이, 위치를 지도로 확인할 수 있습니다. 도시 녹지 정책 수립에 활용됩니다.",
-        dataUsed: "지자체 수목 인벤토리 데이터",
-        impact: "도시 녹지 정책 지원",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/nos-villes-vertes/",
-      },
-      {
-        name: "꿀벌 서식 자원 추정",
-        original: "BeeGIS",
-        description:
-          "위성 이미지와 토지 이용 현황 데이터를 결합해 특정 지역의 꿀벌 서식 적합성을 평가합니다. 양봉업자와 연구자들이 최적의 양봉 위치를 선정하는 데 활용합니다.",
-        dataUsed: "토지 이용 현황 데이터 (Corine Land Cover)",
-        impact: "농업 생산성 및 생태계 보전",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/beegis/",
-      },
-    ],
+    name: "경영 위기 기업 조기 탐지",
+    original: "Signaux Faibles",
+    description:
+      "SIRENE(기업등록) 데이터, 세금 납부 현황, 고용보험 정보를 결합해 경영 위기에 처한 기업을 사전 탐지합니다. 공무원이 선제적으로 지원책을 제안할 수 있게 합니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/signaux-faibles/",
   },
   {
-    category: "교통·인프라",
-    icon: MapPin,
-    color: "text-orange-500",
-    bg: "bg-orange-50 dark:bg-orange-950/20",
-    border: "border-orange-200 dark:border-orange-800",
-    items: [
-      {
-        name: "전국 교통 데이터 통합 플랫폼",
-        original: "Transport.data.gouv.fr",
-        description:
-          "버스·지하철·기차·자전거 등 모든 교통수단의 GTFS 데이터를 한 곳에 집약합니다. 구글 맵, 애플 맵, SNCF 앱 등 수많은 서비스가 이 플랫폼의 데이터를 활용합니다.",
-        dataUsed: "GTFS(교통 시간표), 실시간 운행 데이터",
-        impact: "멀티모달 이동 서비스 활성화",
-        url: "https://transport.data.gouv.fr/",
-      },
-      {
-        name: "전국 주소 데이터베이스 (BAN)",
-        original: "Base Adresse Nationale",
-        description:
-          "프랑스 전체 건물의 주소를 표준화한 공개 데이터베이스입니다. 응급 서비스, 전자상거래, 행정 서비스 등 수천 개 애플리케이션이 BAN API를 호출합니다.",
-        dataUsed: "지자체 주소 데이터, 카다스트르(지적도)",
-        impact: "행정·물류·응급 서비스 효율화",
-        url: "https://adresse.data.gouv.fr/",
-      },
-    ],
+    name: "부동산 실거래가 공개",
+    original: "Données de valeur foncière (DVF)",
+    description:
+      "프랑스 전역의 부동산 실거래 가격 데이터를 누구나 자유롭게 조회·분석할 수 있도록 공개합니다. 시민·전문가·연구자 모두 지역별·유형별 실거래가를 직접 확인할 수 있습니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/dvf/",
   },
   {
-    category: "사회·교육",
-    icon: GraduationCap,
-    color: "text-purple-500",
-    bg: "bg-purple-50 dark:bg-purple-950/20",
-    border: "border-purple-200 dark:border-purple-800",
-    items: [
-      {
-        name: "진로 탐색 경로 제안",
-        original: "DiagOriente",
-        description:
-          "직업 훈련 및 취업 지원 기관의 데이터와 노동시장 통계를 결합해 개인에게 맞춤형 진로 경로를 제안합니다. 취업·재취업 지원 상담에서 활발히 활용됩니다.",
-        dataUsed: "직업 훈련 기관 데이터, 노동시장 통계",
-        impact: "취업 지원 서비스 효율화",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/diagoriente/",
-      },
-      {
-        name: "농업 경영 간소화",
-        original: "Ekylibre",
-        description:
-          "농업 보조금 신청에 필요한 필지 데이터, 작물 분류 데이터 등을 오픈데이터로 연동해 농업인이 행정 서류 작성 시간을 대폭 줄일 수 있게 합니다.",
-        dataUsed: "농업 필지 데이터 (RPG), 작물 분류 데이터",
-        impact: "농업 행정 부담 감소",
-        url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/ekylibre/",
-      },
-    ],
+    name: "농업 경영 간소화",
+    original: "Ekylibre",
+    description:
+      "농업 보조금 신청에 필요한 필지 데이터와 작물 분류 데이터를 오픈데이터로 연동해 농업인의 행정 서류 작성 부담을 대폭 줄입니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/ekylibre/",
   },
   {
-    category: "보건",
-    icon: HeartPulse,
-    color: "text-pink-500",
-    bg: "bg-pink-50 dark:bg-pink-950/20",
-    border: "border-pink-200 dark:border-pink-800",
-    items: [
-      {
-        name: "전국 의료기관 접근성 정보",
-        original: "Données de santé publique",
-        description:
-          "전국 의료기관(병원, 약국, 의원)의 위치·전문과목·장애인 접근성 정보를 공개합니다. 시민이 주변 의료기관을 쉽게 찾고, 공공보건 정책 수립에 활용됩니다.",
-        dataUsed: "FINESS(의료기관 등록), 접근성 데이터",
-        impact: "의료 접근성 개선",
-        url: "https://www.data.gouv.fr/fr/organizations/ministere-des-solidarites-et-de-la-sante/",
-      },
-    ],
+    name: "진로 탐색 경로 제안",
+    original: "DiagOriente",
+    description:
+      "직업 훈련 기관 데이터와 노동시장 통계를 결합해 개인에게 맞춤형 진로 경로를 제안합니다. 취업·재취업 지원 상담 현장에서 활발히 활용되고 있습니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/diagoriente/",
+  },
+  {
+    name: "부동산 환경 위험 정보",
+    original: "ERRIAL",
+    description:
+      "토지 거래 전 해당 부지의 환경 오염·자연재해 위험·산업시설 인접 여부를 공공데이터로 즉시 확인합니다. 부동산 전문가와 일반 시민 모두 이용 가능합니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/errial/",
+  },
+  {
+    name: "꿀벌 서식 자원 추정",
+    original: "BeeGIS",
+    description:
+      "위성 이미지와 토지 이용 현황 데이터를 결합해 특정 지역의 꿀벌 서식 적합성을 평가합니다. 양봉업자와 연구자가 최적 양봉 위치를 선정하는 데 활용합니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/beegis/",
+  },
+  {
+    name: "지역 재생에너지 생산 현황",
+    original: "EnR de réseaux en Pays de la Loire",
+    description:
+      "페이드라루아르 지역의 재생에너지 네트워크 연결 현황과 생산량을 지도로 시각화합니다. 지자체와 에너지 담당 기관이 지역 에너지 전환 계획 수립에 활용합니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/enr-pays-de-la-loire/",
+  },
+  {
+    name: "기업 정보 통합 검색",
+    original: "Annuaire des Entreprises",
+    description:
+      "SIRENE 기반 기업 정보 검색 포털입니다. 사업자 등록번호(SIRET/SIREN)로 기업의 업종·규모·법적 형태·대표자를 즉시 확인할 수 있어 행정 절차를 크게 단축합니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/annuaire-des-entreprises/",
+  },
+  {
+    name: "주유소 유가 추이 분석",
+    original: "Exploration des prix du carburant",
+    description:
+      "프랑스 전국 1만여 개 주유소의 실시간 유가를 공개합니다. 소비자 앱·지도 서비스·언론 등 수백 개 서비스가 이 데이터를 재활용해 가격 비교 서비스를 제공합니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/exploration-prix-carburant/",
+  },
+  {
+    name: "대입 진학 경로 분석",
+    original: "SupTracker",
+    description:
+      "파르쿠르수프(Parcoursup) 입시 데이터를 기반으로 대학별 합격 추이와 전형 패턴을 분석합니다. 수험생과 진학 담당 교사가 현실적인 진학 전략을 수립하는 데 도움을 줍니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/suptracker/",
+  },
+  {
+    name: "장소 주변 환경 정보",
+    original: "Aux Alentours par MAIF",
+    description:
+      "MAIF 보험이 공공데이터를 활용해 특정 장소 주변의 학교·의료시설·대중교통·재해 위험 등 생활 환경 정보를 한눈에 제공하는 서비스입니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/aux-alentours/",
+  },
+  {
+    name: "근처 위험 정보 확인",
+    original: "VigiFrance",
+    description:
+      "기상 위험·홍수·지진·산불 등 여러 부처의 경보 데이터를 통합해 사용자 위치 기반으로 근처 위험을 실시간으로 알려주는 앱입니다.",
+    url: "https://www.data.gouv.fr/fr/pages/onboarding/cas_usage/vigifrance/",
   },
 ];
 
-type CategoryKey = "전체" | "안전·행정" | "경제·부동산" | "환경·도시" | "교통·인프라" | "사회·교육" | "보건";
-
-const ALL_CATEGORIES: CategoryKey[] = [
-  "전체",
-  "안전·행정",
-  "경제·부동산",
-  "환경·도시",
-  "교통·인프라",
-  "사회·교육",
-  "보건",
-];
 
 const GUIDES = [
   {
@@ -428,41 +338,15 @@ const GUIDES = [
   },
 ];
 
-function UseCaseCard({
-  item,
-  categoryColor,
-  categoryBg,
-  categoryBorder,
-}: {
-  item: (typeof USE_CASES)[0]["items"][0];
-  categoryColor: string;
-  categoryBg: string;
-  categoryBorder: string;
-}) {
+function UseCaseCard({ item }: { item: (typeof USE_CASES)[0] }) {
   return (
-    <Card className={`border ${categoryBorder} ${categoryBg} flex flex-col`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <CardTitle className="text-base leading-snug">{item.name}</CardTitle>
-            <CardDescription className="text-xs mt-0.5 italic">{item.original}</CardDescription>
-          </div>
-        </div>
+    <Card className="flex flex-col hover:shadow-md transition-shadow">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base leading-snug">{item.name}</CardTitle>
+        <CardDescription className="text-xs italic">{item.original}</CardDescription>
       </CardHeader>
-      <CardContent className="pb-3 flex-1 space-y-3">
+      <CardContent className="flex-1 pb-3">
         <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-        <div className="space-y-1.5">
-          <div className="flex items-start gap-2 text-xs">
-            <span className="font-medium text-foreground shrink-0">활용 데이터:</span>
-            <span className="text-muted-foreground">{item.dataUsed}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-medium text-foreground shrink-0">기대 효과:</span>
-            <Badge variant="secondary" className={`text-xs ${categoryColor}`}>
-              {item.impact}
-            </Badge>
-          </div>
-        </div>
       </CardContent>
       <div className="px-6 pb-5">
         <Button variant="outline" size="sm" asChild className="w-full">
@@ -472,7 +356,7 @@ function UseCaseCard({
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5"
           >
-            data.gouv.fr에서 자세히 보기 <ExternalLink className="h-3.5 w-3.5" />
+            data.gouv.fr에서 보기 <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </Button>
       </div>
@@ -657,87 +541,25 @@ export default function About() {
 
         {/* ── Use Cases Tab ────────────────────────────── */}
         <TabsContent value="usecases">
-          <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h2 className="text-xl font-semibold mb-1">오픈데이터 활용 사례</h2>
-              <p className="text-sm text-muted-foreground">
-                data.gouv.fr가 선별한 우수 활용 사례를 한국어로 소개합니다.{" "}
-                <a
-                  href="https://www.data.gouv.fr/fr/pages/onboarding/liste_cas_usage/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2 inline-flex items-center gap-0.5"
-                >
-                  원본 페이지 <ExternalLink className="h-3 w-3" />
-                </a>
-              </p>
-            </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-1">오픈데이터 활용 사례</h2>
+            <p className="text-sm text-muted-foreground">
+              data.gouv.fr가 선별한 14개의 우수 활용 사례를 한국어로 소개합니다.{" "}
+              <a
+                href="https://www.data.gouv.fr/pages/onboarding/liste_cas_usage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2 inline-flex items-center gap-0.5"
+              >
+                원본 페이지 <ExternalLink className="h-3 w-3" />
+              </a>
+            </p>
           </div>
-
-          <Tabs defaultValue="전체">
-            <TabsList className="mb-6 flex-wrap h-auto gap-1">
-              {ALL_CATEGORIES.map((cat) => (
-                <TabsTrigger key={cat} value={cat} className="text-xs sm:text-sm">
-                  {cat}
-                  {cat !== "전체" && (
-                    <span className="ml-1.5 text-muted-foreground text-xs">
-                      {USE_CASES.find((c) => c.category === cat)?.items.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <TabsContent value="전체">
-              <div className="space-y-8">
-                {USE_CASES.map((cat) => {
-                  const Icon = cat.icon;
-                  return (
-                    <div key={cat.category}>
-                      <h3 className={`flex items-center gap-2 text-base font-semibold mb-4 ${cat.color}`}>
-                        <Icon className="h-4 w-4" />
-                        {cat.category}
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {cat.items.map((item) => (
-                          <UseCaseCard
-                            key={item.original}
-                            item={item}
-                            categoryColor={cat.color}
-                            categoryBg={cat.bg}
-                            categoryBorder={cat.border}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </TabsContent>
-
-            {USE_CASES.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <TabsContent key={cat.category} value={cat.category}>
-                  <div className="mb-4 flex items-center gap-2">
-                    <Icon className={`h-5 w-5 ${cat.color}`} />
-                    <h3 className={`font-semibold text-lg ${cat.color}`}>{cat.category}</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {cat.items.map((item) => (
-                      <UseCaseCard
-                        key={item.original}
-                        item={item}
-                        categoryColor={cat.color}
-                        categoryBg={cat.bg}
-                        categoryBorder={cat.border}
-                      />
-                    ))}
-                  </div>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {USE_CASES.map((item) => (
+              <UseCaseCard key={item.original} item={item} />
+            ))}
+          </div>
         </TabsContent>
 
         {/* ── Guides Tab ───────────────────────────────── */}
