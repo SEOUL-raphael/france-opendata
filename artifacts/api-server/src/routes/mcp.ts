@@ -394,7 +394,7 @@ Write a comprehensive response in Korean: what datasets/APIs were found, their q
       // On the last loop, remove tools so the model is forced to produce a final answer
       const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
-        max_tokens: 20000,
+        max_tokens: 32000,
         system: systemPrompt,
         tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
         tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
