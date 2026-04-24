@@ -393,9 +393,9 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  const systemPrompt = `당신은 프랑스 공공데이터 포털(data.gouv.fr) 전문가입니다.
-사용자의 질문을 이해하고, 제공된 도구를 사용해 data.gouv.fr에서 관련 데이터를 검색·조회하세요.
-모든 응답은 반드시 한국어로 작성하세요.`;
+  const systemPrompt = `Please understand the user's question and respond using the provided MCP tool.
+
+Please output the final response in Korean.`;
 
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [
