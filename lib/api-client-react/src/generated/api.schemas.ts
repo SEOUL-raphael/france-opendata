@@ -19,6 +19,7 @@ export type ChatMessageRole =
 export const ChatMessageRole = {
   user: "user",
   assistant: "assistant",
+  system: "system",
 } as const;
 
 export interface ChatMessage {
@@ -29,7 +30,7 @@ export interface ChatMessage {
 export interface ChatMessageRequest {
   messages: ChatMessage[];
   /**
-   * Optional context (dataset info, etc.)
+   * Optional context about a dataset or search result
    * @nullable
    */
   context?: string | null;
@@ -38,220 +39,9 @@ export interface ChatMessageRequest {
 export interface ChatMessageResponse {
   content: string;
   role: string;
-}
-
-export interface DatasetOrganization {
-  id?: string;
-  name?: string;
-  slug?: string;
-  /** @nullable */
-  logo?: string | null;
-  /** @nullable */
-  logo_thumbnail?: string | null;
-}
-
-export interface DatasetResource {
-  id: string;
-  title: string;
-  /** @nullable */
-  format?: string | null;
-  url: string;
-  /** @nullable */
-  type?: string | null;
-  /** @nullable */
-  filesize?: number | null;
-  /** @nullable */
-  mime?: string | null;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  created_at?: string | null;
-  /** @nullable */
-  last_modified?: string | null;
-}
-
-export type DatasetMetrics = {
-  reuses?: number;
-  followers?: number;
-  views?: number;
-  discussions?: number;
-};
-
-export interface Dataset {
-  id: string;
-  title: string;
-  slug: string;
-  /** @nullable */
-  description?: string | null;
-  tags?: string[];
-  /** @nullable */
-  created_at?: string | null;
-  /** @nullable */
-  last_modified?: string | null;
-  /** @nullable */
-  last_update?: string | null;
-  organization?: DatasetOrganization | null;
-  resources?: DatasetResource[];
-  metrics?: DatasetMetrics;
-  /** @nullable */
-  license?: string | null;
-  /** @nullable */
-  frequency?: string | null;
-  /** @nullable */
-  temporal_coverage?: string | null;
-  /** @nullable */
-  spatial?: string | null;
-}
-
-export interface DatasetListResponse {
-  data: Dataset[];
-  page: number;
-  page_size: number;
-  total: number;
-  /** @nullable */
-  next_page?: string | null;
-  /** @nullable */
-  previous_page?: string | null;
-}
-
-export interface ResourceListResponse {
-  data: DatasetResource[];
-  page: number;
-  page_size: number;
-  total: number;
-}
-
-export type OrganizationMetrics = {
-  datasets?: number;
-  members?: number;
-  views?: number;
-  followers?: number;
-  reuses?: number;
-};
-
-export type OrganizationMembersItem = { [key: string]: unknown };
-
-export interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  logo?: string | null;
-  /** @nullable */
-  logo_thumbnail?: string | null;
-  /** @nullable */
-  created_at?: string | null;
-  metrics?: OrganizationMetrics;
-  members?: OrganizationMembersItem[];
-  /** @nullable */
-  url?: string | null;
-}
-
-export interface OrganizationListResponse {
-  data: Organization[];
-  page: number;
-  page_size: number;
-  total: number;
-  /** @nullable */
-  next_page?: string | null;
-  /** @nullable */
-  previous_page?: string | null;
-}
-
-export interface Dataservice {
-  id: string;
-  title: string;
-  slug: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  base_api_url?: string | null;
-  /** @nullable */
-  endpoint_description_url?: string | null;
-  organization?: DatasetOrganization | null;
-  tags?: string[];
-  /** @nullable */
-  created_at?: string | null;
-  /** @nullable */
-  last_update?: string | null;
-  /** @nullable */
-  license?: string | null;
-}
-
-export interface DataserviceListResponse {
-  data: Dataservice[];
-  page: number;
-  page_size: number;
-  total: number;
-  /** @nullable */
-  next_page?: string | null;
-  /** @nullable */
-  previous_page?: string | null;
-}
-
-export interface PortalStats {
-  datasets: number;
-  resources: number;
-  reuses: number;
-  organizations: number;
-  users: number;
-  dataservices: number;
-}
-
-export type SearchDatasetsParams = {
   /**
-   * Search query
+   * AI reasoning trace (one loop)
+   * @nullable
    */
-  q?: string;
-  /**
-   * Page number
-   */
-  page?: number;
-  /**
-   * Results per page
-   */
-  page_size?: number;
-  /**
-   * Filter by tag
-   */
-  tag?: string;
-  /**
-   * Filter by organization ID
-   */
-  organization?: string;
-  /**
-   * Sort order (e.g. -created, title)
-   */
-  sort?: string;
-};
-
-export type GetDatasetResourcesParams = {
-  page?: number;
-  page_size?: number;
-};
-
-export type SearchOrganizationsParams = {
-  /**
-   * Search query
-   */
-  q?: string;
-  page?: number;
-  page_size?: number;
-  sort?: string;
-};
-
-export type GetOrganizationDatasetsParams = {
-  page?: number;
-  page_size?: number;
-};
-
-export type SearchDataservicesParams = {
-  /**
-   * Search query
-   */
-  q?: string;
-  page?: number;
-  page_size?: number;
-};
+  thinking?: string | null;
+}
