@@ -15,7 +15,7 @@ const mcpRateLimit = rateLimit({
 
 const MCP_ENDPOINT = "https://mcp.data.gouv.fr/mcp";
 const DATAGOUV_BASE_URL = "https://www.data.gouv.fr/api/1";
-const MINIMAX_MODEL = "claude-opus-4-5";
+const MINIMAX_MODEL = "MiniMax-M2.7";
 
 function getMinimaxClient(): Anthropic {
   if (!process.env.MINIMAX_API_KEY) {
@@ -406,107 +406,79 @@ Please output the final response in Korean.`;
     const MAX_LOOPS = 8;
     let loops = 0;
     let toolCallCount = 0;
-    let thinkingStarted = false;
 
     send("status", { step: "searching", message: "MiniMax M2.7 추론 및 데이터 수집 중..." });
 
-    // Agentic loop: MiniMax reasons, calls tools, reasons again, produces final answer
+    // Agentic loop following MiniMax docs: messages.create → process blocks → tool execution
     while (loops < MAX_LOOPS) {
       loops++;
 
-      const stream = minimax.messages.stream({
+      // Non-streaming call per MiniMax documentation pattern
+      const response = await minimax.messages.create({
         model: MINIMAX_MODEL,
         max_tokens: 5000,
         system: systemPrompt,
-        tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
-        tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
+        tools: ANTHROPIC_TOOLS,
+        tool_choice: { type: "auto" },
         messages,
       });
 
-      // Pending tool calls being built during streaming
-      const pendingTools: Array<{ id: string; name: string; inputJson: string }> = [];
-      let activeToolIdx = -1;
+      // Process all content blocks from the response
+      const toolUseBlocks: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
       let hasTextContent = false;
 
-      for await (const event of stream) {
-        if (event.type === "content_block_start") {
-          const block = event.content_block as { type: string; id?: string; name?: string };
-
-          if (block.type === "thinking") {
-            if (!thinkingStarted) {
-              send("thinking_start", {});
-              thinkingStarted = true;
-            }
-          } else if (block.type === "tool_use") {
-            send("thinking_stop", {});
-            pendingTools.push({ id: block.id ?? "", name: block.name ?? "", inputJson: "" });
-            activeToolIdx = pendingTools.length - 1;
-          } else if (block.type === "text") {
-            if (thinkingStarted && !hasTextContent) {
-              send("thinking_stop", {});
-              send("status", { step: "writing", message: "답변 작성 중..." });
-            }
-            hasTextContent = true;
+      for (const block of response.content) {
+        if (block.type === "thinking") {
+          // Emit interleaved thinking block
+          send("thinking_start", {});
+          send("thinking_delta", { content: block.thinking });
+          send("thinking_stop", {});
+        } else if (block.type === "tool_use") {
+          toolUseBlocks.push({
+            id: block.id,
+            name: block.name,
+            input: block.input as Record<string, unknown>,
+          });
+        } else if (block.type === "text") {
+          if (!hasTextContent) {
+            send("status", { step: "writing", message: "답변 작성 중..." });
           }
-        } else if (event.type === "content_block_delta") {
-          const delta = event.delta as { type: string; thinking?: string; partial_json?: string; text?: string };
-
-          if (delta.type === "thinking_delta" && delta.thinking) {
-            send("thinking_delta", { content: delta.thinking });
-          } else if (delta.type === "input_json_delta" && delta.partial_json && activeToolIdx >= 0) {
-            pendingTools[activeToolIdx].inputJson += delta.partial_json;
-          } else if (delta.type === "text_delta" && delta.text) {
-            send("content", { content: delta.text });
-          }
+          hasTextContent = true;
+          send("content", { content: block.text });
         }
       }
 
-      const finalMsg = await stream.finalMessage();
+      // end_turn: final answer emitted
+      if (response.stop_reason === "end_turn") break;
 
-      if (finalMsg.stop_reason === "end_turn") {
-        // Final answer was streamed — done
-        break;
-      }
+      if (response.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
+        // ⚠️ Append full response.content (thinking + tool_use blocks) to preserve reasoning chain
+        messages.push({ role: "assistant", content: response.content });
 
-      if (finalMsg.stop_reason === "tool_use" && pendingTools.length > 0) {
-        // Add assistant message (includes thinking + tool_use blocks)
-        messages.push({ role: "assistant", content: finalMsg.content });
-
-        // Execute each tool and collect results
         const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
-        for (const tool of pendingTools) {
+        for (const tool of toolUseBlocks) {
           toolCallCount++;
-          let toolArgs: Record<string, unknown> = {};
-          try { toolArgs = JSON.parse(tool.inputJson || "{}"); } catch { /* ignore */ }
+          send("tool_call", { name: tool.name, args: tool.input, callCount: toolCallCount });
 
-          send("tool_call", { name: tool.name, args: toolArgs, callCount: toolCallCount });
-
-          const result = await callMcpTool(tool.name, toolArgs);
+          const result = await callMcpTool(tool.name, tool.input);
 
           let parsedResult: unknown = result;
           try { parsedResult = JSON.parse(result); } catch { /* keep string */ }
           send("tool_result", { name: tool.name, result: parsedResult, callCount: toolCallCount });
 
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: tool.id,
-            content: result,
-          });
+          toolResults.push({ type: "tool_result", tool_use_id: tool.id, content: result });
         }
 
-        // Add tool results as user message and continue loop
         messages.push({ role: "user", content: toolResults });
-
         send("status", { step: "searching", message: `도구 ${toolCallCount}회 호출 완료 · 계속 추론 중...` });
         continue;
       }
 
-      // max_tokens or other stop — try to stream a final answer without tools
+      // Fallback: prompt for final answer if no text was produced
       if (!hasTextContent) {
-        messages.push({ role: "assistant", content: finalMsg.content });
+        messages.push({ role: "assistant", content: response.content });
         messages.push({ role: "user", content: "지금까지 수집한 정보를 바탕으로 한국어로 분석 결과를 작성해주세요." });
-        // Will loop once more for the final answer
       } else {
         break;
       }

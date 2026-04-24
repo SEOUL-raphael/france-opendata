@@ -5,7 +5,7 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 const MCP_ENDPOINT = "https://mcp.data.gouv.fr/mcp";
 const DATAGOUV_BASE_URL = "https://www.data.gouv.fr/api/1";
-const MINIMAX_MODEL = "claude-opus-4-5";
+const MINIMAX_MODEL = "MiniMax-M2.7";
 
 export type SendFn = (event: string, data: unknown) => void;
 
@@ -138,6 +138,7 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
     apiKey: process.env.MINIMAX_API_KEY,
   });
 
+  // Attempt to connect to MiniMax MCP server for additional tools
   let minimaxMcpTools: Tool[] = [];
   let minimaxMcpClose: (() => Promise<void>) | null = null;
   let minimaxMcpCallTool: ((name: string, args: Record<string, unknown>) => Promise<string>) | null = null;
@@ -164,7 +165,6 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
   const MAX_LOOPS = 8;
   let loops = 0;
   let toolCallCount = 0;
-  let thinkingStarted = false;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
@@ -175,72 +175,63 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
       if (signal?.aborted) break;
       loops++;
 
-      const stream = minimax.messages.stream({
+      // Non-streaming call following MiniMax docs pattern
+      const response = await minimax.messages.create({
         model: MINIMAX_MODEL,
         max_tokens: 5000,
         system: SYSTEM_PROMPT,
-        tools: loops < MAX_LOOPS ? allTools : undefined,
-        tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
+        tools: allTools,
+        tool_choice: { type: "auto" },
         messages,
       });
 
-      const pendingTools: Array<{ id: string; name: string; inputJson: string }> = [];
-      let activeToolIdx = -1;
+      totalInputTokens += response.usage?.input_tokens ?? 0;
+      totalOutputTokens += response.usage?.output_tokens ?? 0;
+      send("usage", { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+
+      // Process all content blocks from the response
+      const toolUseBlocks: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
       let hasTextContent = false;
 
-      for await (const event of stream) {
-        if (signal?.aborted) break;
-
-        if (event.type === "content_block_start") {
-          const block = event.content_block as { type: string; id?: string; name?: string };
-          if (block.type === "thinking") {
-            if (!thinkingStarted) { send("thinking_start", {}); thinkingStarted = true; }
-          } else if (block.type === "tool_use") {
-            send("thinking_stop", {});
-            thinkingStarted = false;
-            pendingTools.push({ id: block.id ?? "", name: block.name ?? "", inputJson: "" });
-            activeToolIdx = pendingTools.length - 1;
-          } else if (block.type === "text") {
-            if (thinkingStarted) { send("thinking_stop", {}); thinkingStarted = false; }
-            if (!hasTextContent) { send("status", { step: "writing", message: "답변 작성 중..." }); }
-            hasTextContent = true;
+      for (const block of response.content) {
+        if (block.type === "thinking") {
+          send("thinking_start", {});
+          send("thinking_delta", { content: block.thinking });
+          send("thinking_stop", {});
+        } else if (block.type === "tool_use") {
+          toolUseBlocks.push({
+            id: block.id,
+            name: block.name,
+            input: block.input as Record<string, unknown>,
+          });
+        } else if (block.type === "text") {
+          if (!hasTextContent) {
+            send("status", { step: "writing", message: "답변 작성 중..." });
           }
-        } else if (event.type === "content_block_delta") {
-          const delta = event.delta as { type: string; thinking?: string; partial_json?: string; text?: string };
-          if (delta.type === "thinking_delta" && delta.thinking) {
-            send("thinking_delta", { content: delta.thinking });
-          } else if (delta.type === "input_json_delta" && delta.partial_json && activeToolIdx >= 0) {
-            pendingTools[activeToolIdx].inputJson += delta.partial_json;
-          } else if (delta.type === "text_delta" && delta.text) {
-            send("content", { content: delta.text });
-          }
+          hasTextContent = true;
+          send("content", { content: block.text });
         }
       }
 
-      const finalMsg = await stream.finalMessage();
+      // end_turn: final answer has been emitted
+      if (response.stop_reason === "end_turn") break;
 
-      totalInputTokens += finalMsg.usage?.input_tokens ?? 0;
-      totalOutputTokens += finalMsg.usage?.output_tokens ?? 0;
-      send("usage", { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
-
-      if (finalMsg.stop_reason === "end_turn") break;
-
-      if (finalMsg.stop_reason === "tool_use" && pendingTools.length > 0) {
-        messages.push({ role: "assistant", content: finalMsg.content });
+      // tool_use: execute tools and continue the agentic loop
+      if (response.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
+        // ⚠️ Append full response.content (thinking + tool_use blocks) to preserve reasoning chain
+        messages.push({ role: "assistant", content: response.content });
 
         const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
-        for (const tool of pendingTools) {
-          toolCallCount++;
-          let toolArgs: Record<string, unknown> = {};
-          try { toolArgs = JSON.parse(tool.inputJson || "{}"); } catch { /* ignore */ }
 
-          send("tool_call", { name: tool.name, args: toolArgs, callCount: toolCallCount });
+        for (const tool of toolUseBlocks) {
+          toolCallCount++;
+          send("tool_call", { name: tool.name, args: tool.input, callCount: toolCallCount });
 
           let result: string;
           if (minimaxMcpToolNames.has(tool.name) && minimaxMcpCallTool) {
-            result = await minimaxMcpCallTool(tool.name, toolArgs);
+            result = await minimaxMcpCallTool(tool.name, tool.input);
           } else {
-            result = await callMcpTool(tool.name, toolArgs);
+            result = await callMcpTool(tool.name, tool.input);
           }
 
           let parsedResult: unknown = result;
@@ -255,8 +246,9 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
         continue;
       }
 
+      // Fallback: prompt for final answer if no text was produced
       if (!hasTextContent) {
-        messages.push({ role: "assistant", content: finalMsg.content });
+        messages.push({ role: "assistant", content: response.content });
         messages.push({ role: "user", content: "지금까지 수집한 정보를 바탕으로 한국어로 분석 결과를 작성해주세요." });
       } else {
         break;
