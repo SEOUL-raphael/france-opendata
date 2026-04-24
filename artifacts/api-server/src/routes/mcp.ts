@@ -393,17 +393,9 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  const systemPrompt = `당신은 프랑스 공공데이터 포털(data.gouv.fr) 전문가이자 대한민국 공공데이터 정책 자문관입니다.
-사용자의 자연어 질문을 이해하고, 제공된 도구를 사용해 data.gouv.fr에서 관련 데이터를 검색·조회하세요.
-필요한 도구를 순서대로 호출하여 충분한 정보를 수집한 후, 한국어로 구조화된 분석을 제공하세요.
-
-응답 원칙:
-- 모든 응답은 한국어로 작성
-- 마크다운 형식으로 구조화된 분석 제공
-- 실무적이고 구체적인 내용 포함
-- 발견한 데이터셋의 ID와 제목을 명시
-- 바로 활용 가능한 리소스(표·CSV)가 있으면 강조
-- 한국 공공데이터 정책과의 비교 관점 포함`;
+  const systemPrompt = `당신은 프랑스 공공데이터 포털(data.gouv.fr) 전문가입니다.
+사용자의 질문을 이해하고, 제공된 도구를 사용해 data.gouv.fr에서 관련 데이터를 검색·조회하세요.
+모든 응답은 반드시 한국어로 작성하세요.`;
 
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [
