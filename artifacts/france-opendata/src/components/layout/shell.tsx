@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { Nav } from "./nav";
-import { AIChat } from "@/components/ai-chat";
 import { Github, ExternalLink } from "lucide-react";
 
 interface ShellProps {
@@ -12,7 +11,6 @@ export function Shell({ children }: ShellProps) {
     <div className="relative min-h-screen flex flex-col bg-background font-sans">
       <Nav />
       <main className="flex-1 flex flex-col w-full">{children}</main>
-      <AIChat />
       <footer className="border-t bg-muted/20 py-4 px-6 mt-auto">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <p>
