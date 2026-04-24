@@ -102,9 +102,9 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
 }
 
 export const ANTHROPIC_TOOLS: Anthropic.Messages.Tool[] = [
-  { name: "search_datasets", description: "Search for datasets on data.gouv.fr by keyword.", input_schema: { type: "object", properties: { query: { type: "string" }, page_size: { type: "integer" } }, required: ["query"] } },
-  { name: "search_dataservices", description: "Search for data services (APIs) on data.gouv.fr.", input_schema: { type: "object", properties: { query: { type: "string" }, page_size: { type: "integer" } }, required: ["query"] } },
-  { name: "get_dataset_info", description: "Get detailed information about a specific dataset.", input_schema: { type: "object", properties: { dataset_id: { type: "string" } }, required: ["dataset_id"] } },
+  { name: "search_datasets", description: "Search for datasets on data.gouv.fr. IMPORTANT: data.gouv.fr is a French portal — the query MUST be in French (e.g., use 'population Paris' not '파리 인구', 'immobilier' not '부동산'). Try multiple French keyword variations for best results.", input_schema: { type: "object", properties: { query: { type: "string", description: "Search keywords in FRENCH only" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "search_dataservices", description: "Search for data services (APIs) on data.gouv.fr. IMPORTANT: query MUST be in French.", input_schema: { type: "object", properties: { query: { type: "string", description: "Search keywords in FRENCH only" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "get_dataset_info", description: "Get detailed information about a specific dataset by its ID.", input_schema: { type: "object", properties: { dataset_id: { type: "string" } }, required: ["dataset_id"] } },
   { name: "list_dataset_resources", description: "List resource files in a dataset.", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, page_size: { type: "integer" } }, required: ["dataset_id"] } },
   { name: "get_resource_info", description: "Get details about a specific resource file.", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, resource_id: { type: "string" } }, required: ["dataset_id", "resource_id"] } },
   { name: "query_resource_data", description: "Query tabular data from a resource.", input_schema: { type: "object", properties: { resource_id: { type: "string" }, limit: { type: "integer" } }, required: ["resource_id"] } },
@@ -112,8 +112,37 @@ export const ANTHROPIC_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "get_metrics", description: "Get overall portal statistics.", input_schema: { type: "object", properties: {}, required: [] } },
 ];
 
-const SYSTEM_PROMPT = `Please understand the user's question and respond using the provided MCP tool.
-Please output the response in Korean.`;
+const SYSTEM_PROMPT = `You are a research assistant helping Korean policy makers explore France's open data portal (data.gouv.fr).
+
+CRITICAL RULE: data.gouv.fr is entirely in French. All dataset titles, descriptions, and search indices are in French. You MUST always search using French keywords — never Korean or English.
+
+## Workflow — follow these steps in order:
+
+### Step 1 — PLAN (before any tool call)
+Analyze the user's question and create a search plan:
+- Translate the core concepts into French search terms
+- Prepare 2–4 French keyword variations to try
+- Common translations:
+  인구/인구통계 → population, démographie, habitants, recensement
+  부동산/주택 → immobilier, logement, foncier, habitat
+  교통/이동 → transport, mobilité, trafic, déplacement
+  환경/기후 → environnement, écologie, pollution, climat
+  보건/의료 → santé, hôpital, médecin, maladie
+  예산/재정 → budget, finance, dépenses, fiscalité
+  범죄/치안 → criminalité, délinquance, sécurité, police
+  교육 → éducation, école, enseignement, formation
+  농업/식품 → agriculture, alimentation, agroalimentaire
+  에너지 → énergie, électricité, consommation
+
+### Step 2 — SEARCH
+Call search_datasets with each French keyword variation. Retrieve at least 2 different searches to broaden coverage.
+
+### Step 3 — DETAIL
+For the most relevant datasets found, call get_dataset_info to get full metadata and resource list.
+
+### Step 4 — ANSWER
+Write a comprehensive response in Korean summarizing what was found, why each dataset is relevant, and how Korean policy makers could use it.`;
+
 
 export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSignal): Promise<void> {
   if (!process.env.MINIMAX_API_KEY) throw new Error("MINIMAX_API_KEY가 설정되지 않았습니다.");
