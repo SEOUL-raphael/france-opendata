@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import axios from "axios";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { rateLimit } from "express-rate-limit";
 
 const router: IRouter = Router();
@@ -15,13 +16,23 @@ const mcpRateLimit = rateLimit({
 
 const MCP_ENDPOINT = "https://mcp.data.gouv.fr/mcp";
 const DATAGOUV_BASE_URL = "https://www.data.gouv.fr/api/1";
-const MODEL = "gpt-4.1-mini";
+const OPENAI_MODEL = "gpt-4.1-mini";
+const MINIMAX_MODEL = "claude-opus-4-5";
 
-// OpenAI client via Replit AI Integrations proxy
+// OpenAI client via Replit AI Integrations proxy (tool calls)
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
+
+// MiniMax client via Anthropic-compatible endpoint (reasoning synthesis)
+function getMinimaxClient(): Anthropic | null {
+  if (!process.env.MINIMAX_API_KEY) return null;
+  return new Anthropic({
+    baseURL: "https://api.minimax.io/anthropic",
+    apiKey: process.env.MINIMAX_API_KEY,
+  });
+}
 
 export const MCP_TOOLS_META = [
   {
@@ -335,7 +346,15 @@ const OPENAI_TOOL_DEFS: OpenAI.ChatCompletionTool[] = [
 ];
 
 router.get("/mcp/tools", (_req, res) => {
-  res.json({ tools: MCP_TOOLS_META, model: MODEL, mcpEndpoint: MCP_ENDPOINT, status: "active" });
+  const minimaxConfigured = !!process.env.MINIMAX_API_KEY;
+  res.json({
+    tools: MCP_TOOLS_META,
+    model: OPENAI_MODEL,
+    synthesisModel: minimaxConfigured ? "MiniMax-M2.7" : OPENAI_MODEL,
+    minimaxEnabled: minimaxConfigured,
+    mcpEndpoint: MCP_ENDPOINT,
+    status: "active",
+  });
 });
 
 router.get("/mcp/health", async (_req, res) => {
@@ -364,13 +383,16 @@ router.get("/mcp/health", async (_req, res) => {
   }
 
   const aiOk = !!(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+  const minimaxOk = !!process.env.MINIMAX_API_KEY;
 
   res.json({
     status: datagouv.status === "fulfilled" && mcpOk && aiOk ? "ok" : "degraded",
     datagouv: datagouv.status === "fulfilled" ? "ok" : "unreachable",
     mcp: mcpOk ? "ok" : "unreachable",
-    minimax: aiOk ? "configured" : "missing",
-    model: MODEL,
+    openai: aiOk ? "configured" : "missing",
+    minimax: minimaxOk ? "configured" : "missing",
+    model: OPENAI_MODEL,
+    synthesisModel: minimaxOk ? "MiniMax-M2.7" : OPENAI_MODEL,
     mcpEndpoint: MCP_ENDPOINT,
   });
 });
@@ -391,6 +413,7 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   }
 
   const query = rawQuery.trim();
+  const minimaxClient = getMinimaxClient();
 
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-store");
@@ -418,19 +441,22 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
     { role: "user", content: query },
   ];
 
+  // Collect tool results for synthesis prompt
+  const toolResultSummaries: string[] = [];
+
   try {
-    send("status", { step: "thinking", message: "MCP 도구를 선택하고 데이터를 수집 중..." });
+    send("status", { step: "searching", message: "MCP 도구로 데이터 수집 중..." });
 
     const MAX_LOOPS = 6;
     let loops = 0;
     let toolCallCount = 0;
 
-    // Agentic tool-call loop
+    // Phase 1: Agentic tool-call loop using OpenAI (reliable tool_calls support)
     while (loops < MAX_LOOPS) {
       loops++;
 
       const response = await openai.chat.completions.create({
-        model: MODEL,
+        model: OPENAI_MODEL,
         messages,
         tools: OPENAI_TOOL_DEFS,
         tool_choice: loops >= MAX_LOOPS ? "none" : "auto",
@@ -462,6 +488,8 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
 
         send("tool_result", { name: toolName, result: parsedResult, callCount: toolCallCount });
 
+        toolResultSummaries.push(`[도구: ${toolName}]\n입력: ${JSON.stringify(toolArgs)}\n결과: ${result.substring(0, 1000)}`);
+
         messages.push({
           role: "tool",
           tool_call_id: toolCall.id,
@@ -470,19 +498,60 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
       }
     }
 
-    send("status", { step: "thinking", message: "분석 결과 작성 중..." });
+    // Phase 2: Synthesis — use MiniMax (with reasoning) if available, else OpenAI streaming
+    if (minimaxClient && toolResultSummaries.length > 0) {
+      send("status", { step: "reasoning", message: "MiniMax M2.7 추론 중..." });
 
-    // Streaming final answer
-    const stream = await openai.chat.completions.create({
-      model: MODEL,
-      messages,
-      max_completion_tokens: 3000,
-      stream: true,
-    });
+      const synthesisPrompt = `사용자 질문: ${query}
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) send("content", { content });
+수집된 데이터 (data.gouv.fr API 결과):
+${toolResultSummaries.join("\n\n---\n\n")}
+
+위 데이터를 바탕으로 대한민국 공공데이터 정책결정자를 위한 심층 분석을 한국어 마크다운으로 작성하세요.
+- 주요 데이터셋과 API 서비스 소개
+- 한국 공공데이터 정책과의 비교 관점 포함
+- 실무 활용 방안 제안
+- 구체적인 데이터셋 ID와 제목 명시`;
+
+      const stream = minimaxClient.messages.stream({
+        model: MINIMAX_MODEL,
+        max_tokens: 3000,
+        messages: [{ role: "user", content: synthesisPrompt }],
+      });
+
+      for await (const event of stream) {
+        if (event.type === "content_block_delta") {
+          const delta = event.delta as { type: string; thinking?: string; text?: string };
+          if (delta.type === "thinking_delta" && delta.thinking) {
+            send("thinking_delta", { content: delta.thinking });
+          } else if (delta.type === "text_delta" && delta.text) {
+            send("content", { content: delta.text });
+          }
+        } else if (event.type === "content_block_start") {
+          const block = event.content_block as { type: string };
+          if (block.type === "thinking") {
+            send("thinking_start", {});
+          } else if (block.type === "text") {
+            send("thinking_stop", {});
+            send("status", { step: "writing", message: "답변 작성 중..." });
+          }
+        }
+      }
+    } else {
+      // Fallback: OpenAI streaming final answer
+      send("status", { step: "writing", message: "분석 결과 작성 중..." });
+
+      const stream = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        messages,
+        max_completion_tokens: 3000,
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) send("content", { content });
+      }
     }
 
     send("done", {});

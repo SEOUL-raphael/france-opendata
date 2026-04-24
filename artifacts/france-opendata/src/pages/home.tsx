@@ -61,8 +61,11 @@ interface McpHealthData {
   status: string;
   datagouv: string;
   mcp: string;
+  openai?: string;
   minimax: string;
   model: string;
+  synthesisModel?: string;
+  minimaxEnabled?: boolean;
   mcpEndpoint: string;
 }
 
@@ -74,10 +77,11 @@ interface McpToolCall {
 }
 
 interface McpSearchState {
-  status: "idle" | "searching" | "thinking" | "done" | "error";
+  status: "idle" | "searching" | "thinking" | "writing" | "done" | "error";
   statusMessage: string;
   toolCalls: McpToolCall[];
   thinking: string;
+  isThinking: boolean;
   content: string;
   errorMessage: string | null;
 }
@@ -103,6 +107,7 @@ function useMcpSearch() {
       statusMessage: "MCP 도구 선택 중...",
       toolCalls: [],
       thinking: "",
+      isThinking: false,
       content: "",
       errorMessage: null,
     });
@@ -175,11 +180,23 @@ function useMcpSearch() {
                     : tc
                 ),
               }));
-            } else if (eventType === "thinking") {
+            } else if (eventType === "thinking_start") {
               setState((prev) => ({
                 ...prev,
                 status: "thinking",
+                isThinking: true,
+              }));
+            } else if (eventType === "thinking_delta") {
+              setState((prev) => ({
+                ...prev,
+                status: "thinking",
+                isThinking: true,
                 thinking: prev.thinking + ((data.content as string) ?? ""),
+              }));
+            } else if (eventType === "thinking_stop") {
+              setState((prev) => ({
+                ...prev,
+                isThinking: false,
               }));
             } else if (eventType === "content") {
               setState((prev) => ({
@@ -212,7 +229,7 @@ function useMcpSearch() {
 
   const reset = useCallback(() => {
     if (abortRef.current) abortRef.current.abort();
-    setState({ status: "idle", statusMessage: "", toolCalls: [], thinking: "", content: "", errorMessage: null });
+    setState({ status: "idle", statusMessage: "", toolCalls: [], thinking: "", isThinking: false, content: "", errorMessage: null });
   }, []);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -602,8 +619,8 @@ export default function Home() {
                 </Card>
               )}
 
-              {/* Thinking Panel */}
-              {mcp.thinking && (
+              {/* Thinking Panel — MiniMax M2.7 reasoning */}
+              {(mcp.thinking || mcp.isThinking) && (
                 <Card className="border-violet-200 bg-violet-50/50 dark:border-violet-900 dark:bg-violet-950/20">
                   <CardHeader
                     className="pb-2 cursor-pointer select-none"
@@ -611,15 +628,23 @@ export default function Home() {
                   >
                     <div className="flex items-center gap-2">
                       <Brain className="h-4 w-4 text-violet-500" />
-                      <CardTitle className="text-base text-violet-700 dark:text-violet-300">AI 추론 과정</CardTitle>
-                      {mcp.status === "thinking" && <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400 ml-1" />}
+                      <CardTitle className="text-base text-violet-700 dark:text-violet-300">MiniMax M2.7 추론 과정</CardTitle>
+                      {mcp.isThinking && <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400 ml-1" />}
+                      {!mcp.isThinking && mcp.thinking && (
+                        <span className="text-[10px] text-violet-400 ml-1">완료</span>
+                      )}
                       <button className="ml-auto text-violet-400">
                         {showThinking ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </button>
                     </div>
-                    {!showThinking && (
+                    {!showThinking && mcp.thinking && (
                       <CardDescription className="text-violet-600/70 dark:text-violet-400/70 text-xs line-clamp-1">
                         {mcp.thinking}
+                      </CardDescription>
+                    )}
+                    {!showThinking && !mcp.thinking && mcp.isThinking && (
+                      <CardDescription className="text-violet-600/70 dark:text-violet-400/70 text-xs">
+                        추론 중...
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -627,7 +652,7 @@ export default function Home() {
                     <CardContent className="pt-0">
                       <div className="max-h-48 overflow-y-auto">
                         <p className="text-xs text-violet-700/80 dark:text-violet-300/80 whitespace-pre-wrap font-mono leading-relaxed">
-                          {mcp.thinking}
+                          {mcp.thinking || "추론 중..."}
                         </p>
                       </div>
                     </CardContent>
@@ -636,7 +661,7 @@ export default function Home() {
               )}
 
               {/* AI Analysis */}
-              {(mcp.content || mcp.status === "thinking") && (
+              {(mcp.content || mcp.status === "thinking" || mcp.status === "writing") && (
                 <div ref={contentRef}>
                   <Card>
                     <CardHeader className="pb-3">
@@ -651,7 +676,7 @@ export default function Home() {
                         )}
                       </div>
                       <CardDescription>
-                        GPT-4.1 Mini + MCP · 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
+                        GPT-4.1 Mini (도구) + MiniMax M2.7 (분석) · 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
