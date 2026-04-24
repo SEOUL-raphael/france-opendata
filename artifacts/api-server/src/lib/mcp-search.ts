@@ -172,12 +172,13 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
       loops++;
 
       // Stream for real-time thinking/text display
+      // On the last loop, remove tools so the model is forced to produce a final answer
       const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
-        max_tokens: 10000,
+        max_tokens: 6000,
         system: SYSTEM_PROMPT,
-        tools: allTools,
-        tool_choice: { type: "auto" },
+        tools: loops < MAX_LOOPS ? allTools : undefined,
+        tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
         messages,
       });
 

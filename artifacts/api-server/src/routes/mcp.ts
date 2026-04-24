@@ -412,12 +412,13 @@ Please output the response in Korean.`;
     while (loops < MAX_LOOPS) {
       loops++;
 
+      // On the last loop, remove tools so the model is forced to produce a final answer
       const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
-        max_tokens: 10000,
+        max_tokens: 6000,
         system: systemPrompt,
-        tools: ANTHROPIC_TOOLS,
-        tool_choice: { type: "auto" },
+        tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
+        tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
         messages,
       });
 
