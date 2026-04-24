@@ -142,7 +142,7 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [{ role: "user", content: query }];
 
-  const MAX_LOOPS = 8;
+  const MAX_LOOPS = 30; // safety cap only — loop exits naturally on end_turn
   let loops = 0;
   let toolCallCount = 0;
   let totalInputTokens = 0;
@@ -154,13 +154,12 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
     if (signal?.aborted) break;
     loops++;
 
-    // On the last loop, remove tools to force a final text answer
     const stream = minimax.messages.stream({
       model: MINIMAX_MODEL,
       max_tokens: 32000,
       system: SYSTEM_PROMPT,
-      tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
-      tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
+      tools: ANTHROPIC_TOOLS,
+      tool_choice: { type: "auto" },
       messages,
     });
 

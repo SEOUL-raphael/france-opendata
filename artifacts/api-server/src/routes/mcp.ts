@@ -337,23 +337,22 @@ Please output the response in Korean.`;
   ];
 
   try {
-    const MAX_LOOPS = 8;
+    const MAX_LOOPS = 30; // safety cap only — loop exits naturally on end_turn
     let loops = 0;
     let toolCallCount = 0;
 
     send("status", { step: "searching", message: "MiniMax M2.7 추론 및 데이터 수집 중..." });
 
-    // Agentic loop: stream for real-time display, then process final content blocks
+    // Agentic loop: runs until model returns end_turn (natural completion)
     while (loops < MAX_LOOPS) {
       loops++;
 
-      // On the last loop, remove tools so the model is forced to produce a final answer
       const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
         max_tokens: 32000,
         system: systemPrompt,
-        tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
-        tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
+        tools: ANTHROPIC_TOOLS,
+        tool_choice: { type: "auto" },
         messages,
       });
 
