@@ -128,7 +128,7 @@ function mcpToolToAnthropic(tool: Tool): Anthropic.Messages.Tool {
 
 const SYSTEM_PROMPT = `Please understand the user's question and respond using the provided MCP tool.
 
-Please output the final response in Korean.`;
+Please think and reason in Korean throughout the entire process, and output the final response in Korean.`;
 
 export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSignal): Promise<void> {
   if (!process.env.MINIMAX_API_KEY) throw new Error("MINIMAX_API_KEY가 설정되지 않았습니다.");
