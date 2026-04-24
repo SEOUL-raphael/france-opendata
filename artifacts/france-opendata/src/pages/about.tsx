@@ -228,14 +228,14 @@ const GUIDES = [
     items: [
       {
         title: "데이터 생산자를 위한 법률 가이드",
-        titleFr: "Guide juridique — producteurs de données",
+        titleFr: "Producteurs de données",
         desc: "공공데이터 공개 의무 범위, 재사용 라이선스(Licence Ouverte·ODbL) 선택 기준, 개인정보 포함 데이터 처리 시 RGPD 준수 방법을 단계별로 설명합니다.",
         tags: ["Licence Ouverte", "RGPD", "공개 의무"],
         url: "https://guides.data.gouv.fr/guides/guide-juridique/producteurs-de-donnees",
       },
       {
         title: "데이터 활용자를 위한 법률 가이드",
-        titleFr: "Guide juridique — réutilisateurs de données",
+        titleFr: "Réutilisateurs de données",
         desc: "공공데이터 재활용 시 준수해야 할 라이선스 조건, 상업적 이용 가능 여부, 원본 출처 표기 방법, 저작권 예외 케이스를 정리합니다.",
         tags: ["재사용 조건", "출처 표기", "상업적 이용"],
         url: "https://guides.data.gouv.fr/guides/guide-juridique/reutilisateurs-de-donnees",
@@ -243,7 +243,7 @@ const GUIDES = [
       {
         title: "프랑스 오픈데이터 역사 연대표",
         titleFr: "Chronologie de l'open data",
-        desc: "2011년 data.gouv.fr 설립부터 2016년 디지털 공화국법, 2024년 MCP 도입까지 프랑스 오픈데이터 정책의 주요 이정표를 시간순으로 정리합니다.",
+        desc: "2011년 data.gouv.fr 설립부터 2016년 디지털 공화국법까지 프랑스 오픈데이터 정책의 주요 이정표를 시간순으로 정리합니다.",
         tags: ["역사", "정책", "법제도"],
         url: "https://guides.data.gouv.fr/guides/guide-juridique/chronologie-de-lopen-data",
       },
@@ -261,7 +261,7 @@ const GUIDES = [
       {
         title: "품질 높은 데이터셋 준비하기",
         titleFr: "Préparer un jeu de données de qualité",
-        desc: "파일 형식(CSV·JSON·Parquet) 선택, 인코딩(UTF-8), 날짜 표준화(ISO 8601), 결측치 표기 규칙, 컬럼 명칭 명확화 등 데이터 게시 전 체크리스트를 제공합니다.",
+        desc: "파일 형식(CSV·JSON·Parquet) 선택, 인코딩(UTF-8), 날짜 표준화(ISO 8601), 결측치 표기 규칙 등 데이터 게시 전 체크리스트를 제공합니다.",
         tags: ["CSV", "UTF-8", "ISO 8601"],
         url: "https://guides.data.gouv.fr/guides/guide-qualite/preparer-un-jeu-de-donnees-de-qualite",
       },
@@ -273,16 +273,30 @@ const GUIDES = [
         url: "https://guides.data.gouv.fr/guides/guide-qualite/documenter-des-donnees",
       },
       {
+        title: "데이터셋 품질 수준 평가하기",
+        titleFr: "Évaluer le niveau de qualité d'un jeu de données",
+        desc: "데이터 완전성·정확성·최신성·일관성을 점검하는 품질 평가 기준과 자동화 검증 도구를 사용해 공개 전 수준을 객관적으로 측정하는 방법을 설명합니다.",
+        tags: ["품질 평가", "검증", "완전성"],
+        url: "https://guides.data.gouv.fr/guides/guide-qualite/evaluer-le-niveau-de-qualite-dun-jeu-de-donnees",
+      },
+      {
         title: "데이터 스키마 활용하기",
         titleFr: "Maîtriser les schémas de données",
-        desc: "schema.data.gouv.fr에서 제공하는 표준 스키마를 채택해 여러 기관 데이터를 자동 병합·검증하는 방법을 설명합니다. TableSchema·JSON Schema 기반 유효성 검사 도구 활용법 포함.",
+        desc: "schema.data.gouv.fr에서 제공하는 표준 스키마를 채택해 여러 기관 데이터를 자동 병합·검증하는 방법을 설명합니다. TableSchema·JSON Schema 기반 유효성 검사 도구 포함.",
         tags: ["schema.data.gouv.fr", "TableSchema", "검증"],
         url: "https://guides.data.gouv.fr/guides/guide-qualite/maitriser-les-schemas-de-donnees",
+      },
+      {
+        title: "지속적으로 데이터셋 품질 개선하기",
+        titleFr: "Améliorer la qualité d'un jeu de données en continu",
+        desc: "데이터 공개 이후 커뮤니티 피드백 반영, 오류 신고 처리, 정기 갱신 절차, 품질 지표 모니터링을 통해 데이터셋 품질을 지속적으로 향상시키는 방법을 다룹니다.",
+        tags: ["지속 개선", "피드백", "모니터링"],
+        url: "https://guides.data.gouv.fr/guides/guide-qualite/ameliorer-la-qualite-dun-jeu-de-donnees-en-continu",
       },
     ],
   },
   {
-    group: "데이터 활용하기",
+    group: "데이터 재활용하기",
     groupFr: "Réutiliser des données",
     groupIcon: Code2,
     groupColor: "text-green-700 dark:text-green-400",
@@ -307,9 +321,30 @@ const GUIDES = [
       {
         title: "지리정보 API 활용",
         titleFr: "Utiliser les API géographiques",
-        desc: "api-adresse.data.gouv.fr(주소 검색), api.gouv.fr/les-api 카탈로그, 행정구역·지적도 API 등 프랑스 공공 지리정보 API를 지도·GIS 프로젝트에 연동하는 방법을 설명합니다.",
+        desc: "api-adresse.data.gouv.fr(주소 검색), 행정구역·지적도 API 등 프랑스 공공 지리정보 API를 지도·GIS 프로젝트에 연동하는 방법을 설명합니다.",
         tags: ["API", "GIS", "지도"],
         url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/utiliser-les-api-geographiques",
+      },
+      {
+        title: "주소 API 실습 가이드",
+        titleFr: "Prendre en main l'API Adresse (IGN)",
+        desc: "IGN이 제공하는 전국 주소 API(api-adresse.data.gouv.fr)를 실제로 사용해보는 실습 가이드입니다. 주소 검색·역지오코딩·배치 처리 방법을 코드 예제와 함께 설명합니다.",
+        tags: ["API Adresse", "IGN", "지오코딩"],
+        url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/prendre-en-main-lapi-adresse-portee-par-lign",
+      },
+      {
+        title: "기상 데이터 활용 입문",
+        titleFr: "Prise en main des données météorologiques",
+        desc: "Météo-France가 공개한 기상 관측 데이터(온도·강수량·풍속 등)를 data.gouv.fr에서 찾아 다운로드하고, 기후 분석·재난 예측 서비스에 연동하는 방법을 안내합니다.",
+        tags: ["기상", "Météo-France", "기후"],
+        url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/prise-en-main-des-donnees-meteorologiques",
+      },
+      {
+        title: "지적도(카다스트르) 데이터 활용",
+        titleFr: "Autour du cadastre",
+        desc: "프랑스 지적도(cadastre) 데이터의 구조와 좌표계, data.gouv.fr에서 시군구별 지적 파일 다운로드 방법, GIS 소프트웨어에서 시각화하는 절차를 다룹니다.",
+        tags: ["카다스트르", "지적도", "GIS"],
+        url: "https://guides.data.gouv.fr/guides/reutiliser-des-donnees/autour-du-cadastre",
       },
     ],
   },
@@ -338,10 +373,56 @@ const GUIDES = [
       },
       {
         title: "API Entreprise·API Particulier 활용",
-        titleFr: "API Entreprise et API Particulier",
+        titleFr: "Bouquets API Entreprise et API Particulier",
         desc: "기업정보(SIRENE·INPI), 세금 납부 현황, 사회보험 자격 등을 실시간 조회하는 API Entreprise와 시민 개인 정보를 행정 서류 없이 확인하는 API Particulier 연동 가이드입니다.",
         tags: ["API Entreprise", "SIRENE", "행정"],
         url: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations/bouquets-api-entreprise-et-api-particulier",
+      },
+      {
+        title: "인적 지원 및 동반 서비스",
+        titleFr: "Accompagnement humain",
+        desc: "data.gouv.fr 팀이 제공하는 데이터 공개 지원 서비스: 기관별 맞춤 컨설팅, 워크숍, 기술 지원 채널, data.gouv.fr 커뮤니티 포럼 활용법을 안내합니다.",
+        tags: ["지원", "컨설팅", "커뮤니티"],
+        url: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations/accompagnement-humain",
+      },
+    ],
+  },
+  {
+    group: "기타 유용한 자료",
+    groupFr: "Autres ressources utiles",
+    groupIcon: BookOpen,
+    groupColor: "text-teal-600 dark:text-teal-400",
+    groupBg: "bg-teal-50 dark:bg-teal-950/20",
+    groupBorder: "border-teal-200 dark:border-teal-800",
+    groupUrl: "https://guides.data.gouv.fr/guides/autres-ressources-utiles",
+    items: [
+      {
+        title: "오픈데이터 용어 사전",
+        titleFr: "Lexique de l'open data",
+        desc: "오픈데이터 분야에서 자주 등장하는 핵심 용어(라이선스·API·메타데이터·RGPD 등)를 프랑스어 원어와 함께 명확하게 정의한 공식 용어 사전입니다.",
+        tags: ["용어집", "입문", "레퍼런스"],
+        url: "https://guides.data.gouv.fr/guides/autres-ressources-utiles/lexique-de-lopen-data",
+      },
+      {
+        title: "공공 소스코드 공개 가이드",
+        titleFr: "Codes sources du secteur public — lesquels ouvrir, pourquoi et comment",
+        desc: "공공기관이 개발한 소프트웨어 소스코드를 오픈소스로 공개해야 하는 법적 의무 범위, 공개 방법(GitHub·gitlab.com), 라이선스 선택 기준을 다룹니다.",
+        tags: ["소스코드", "오픈소스", "공개 의무"],
+        url: "https://guides.data.gouv.fr/guides/autres-ressources-utiles/codes-sources-du-secteur-public-lesquels-ouvrir-pourquoi-et-comment",
+      },
+      {
+        title: "공공 알고리즘 설명 의무",
+        titleFr: "Les algorithmes publics — pourquoi et comment les expliquer",
+        desc: "행정 결정에 사용되는 알고리즘을 시민에게 설명해야 하는 법적 의무(디지털 공화국법)와 실제로 어떻게 알고리즘 로직을 이해하기 쉽게 공개하는지 안내합니다.",
+        tags: ["알고리즘", "투명성", "설명 의무"],
+        url: "https://guides.data.gouv.fr/guides/autres-ressources-utiles/les-algorithmes-publics-pourquoi-et-comment-les-expliquer",
+      },
+      {
+        title: "기후 해커톤 참가자 가이드",
+        titleFr: "Guide du participant au hackathon 'Le climat en données'",
+        desc: "data.gouv.fr가 주관한 기후 데이터 해커톤 참가자를 위한 안내서입니다. 활용 가능한 기후·환경 데이터셋 목록, API 접근 방법, 심사 기준을 담고 있습니다.",
+        tags: ["해커톤", "기후", "환경"],
+        url: "https://guides.data.gouv.fr/guides/autres-ressources-utiles/guide-du-participant-au-hackathon-le-climat-en-donnees",
       },
     ],
   },
@@ -704,7 +785,7 @@ export default function About() {
                   원문 보기 <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {GUIDES.map((group) => {
                   const Icon = group.groupIcon;
                   return (
