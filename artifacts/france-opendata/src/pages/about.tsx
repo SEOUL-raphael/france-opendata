@@ -19,7 +19,13 @@ import {
   FileJson,
   Network,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -121,10 +127,9 @@ const USE_CASES = [
     original: "VigiFrance",
     description:
       "기상 위험·홍수·지진·산불 등 여러 부처의 경보 데이터를 통합해 사용자 위치 기반으로 근처 위험을 실시간으로 알려주는 앱입니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
+    url: "https://www.data.gouv.fr/pages/onboarding/vigifrance",
   },
 ];
-
 
 const GUIDES = [
   {
@@ -265,7 +270,8 @@ const GUIDES = [
     groupColor: "text-orange-600 dark:text-orange-400",
     groupBg: "bg-orange-50 dark:bg-orange-950/20",
     groupBorder: "border-orange-200 dark:border-orange-800",
-    groupUrl: "https://guides.data.gouv.fr/guides/outils-pour-les-administrations",
+    groupUrl:
+      "https://guides.data.gouv.fr/guides/outils-pour-les-administrations",
     items: [
       {
         title: "API 원칙과 설계 가이드",
@@ -315,7 +321,8 @@ const GUIDES = [
       },
       {
         title: "공공 소스코드 공개 가이드",
-        titleFr: "Codes sources du secteur public — lesquels ouvrir, pourquoi et comment",
+        titleFr:
+          "Codes sources du secteur public — lesquels ouvrir, pourquoi et comment",
         desc: "공공기관이 개발한 소프트웨어 소스코드를 오픈소스로 공개해야 하는 법적 의무 범위, 공개 방법(GitHub·gitlab.com), 라이선스 선택 기준을 다룹니다.",
         tags: ["소스코드", "오픈소스", "공개 의무"],
         url: "https://guides.data.gouv.fr/guides/autres-ressources-utiles/codes-sources-du-secteur-public-lesquels-ouvrir-pourquoi-et-comment",
@@ -343,10 +350,14 @@ function UseCaseCard({ item }: { item: (typeof USE_CASES)[0] }) {
     <Card className="flex flex-col hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
         <CardTitle className="text-base leading-snug">{item.name}</CardTitle>
-        <CardDescription className="text-xs italic">{item.original}</CardDescription>
+        <CardDescription className="text-xs italic">
+          {item.original}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-3">
-        <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {item.description}
+        </p>
       </CardContent>
       <div className="px-6 pb-5">
         <Button variant="outline" size="sm" asChild className="w-full">
@@ -413,10 +424,15 @@ export default function About() {
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-8 py-10">
       <div className="text-center mb-10 space-y-3">
-        <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 px-3 py-1">
+        <Badge
+          variant="outline"
+          className="text-primary border-primary/30 bg-primary/5 px-3 py-1"
+        >
           Policy Brief
         </Badge>
-        <h1 className="text-4xl font-bold tracking-tight">프랑스 공공데이터 포털 벤치마킹</h1>
+        <h1 className="text-4xl font-bold tracking-tight">
+          프랑스 공공데이터 포털 벤치마킹
+        </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           대한민국 디지털 플랫폼 정부 구현을 위한 data.gouv.fr 분석 보고서
         </p>
@@ -440,18 +456,18 @@ export default function About() {
               <h2 className="text-2xl font-bold">1. 탄생 배경 및 운영 주체</h2>
             </div>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              프랑스의 공공데이터 포털 <strong>data.gouv.fr</strong>는 2011년 François Fillon
-              총리의 통달로 설립되었습니다. 현재는 총리실 직속의 디지털 정부 태스크포스인{" "}
-              <strong>Etalab(에탈랍)</strong>이 운영을 전담하고 있습니다. Etalab은 단순한 포털
-              운영을 넘어 프랑스 정부의 데이터 전략, AI 활용, 오픈소스 정책을 총괄하는 핵심
-              조직입니다.
+              프랑스의 공공데이터 포털 <strong>data.gouv.fr</strong>는 2011년
+              François Fillon 총리의 통달로 설립되었습니다. 현재는 총리실 직속의
+              디지털 정부 태스크포스인 <strong>Etalab(에탈랍)</strong>이 운영을
+              전담하고 있습니다. Etalab은 단순한 포털 운영을 넘어 프랑스 정부의
+              데이터 전략, AI 활용, 오픈소스 정책을 총괄하는 핵심 조직입니다.
             </p>
             <Card className="mt-8 border-l-4 border-l-primary bg-primary/5">
               <CardContent className="p-6 relative">
                 <Quote className="absolute top-4 left-4 h-12 w-12 text-primary/10 -z-10" />
                 <blockquote className="text-lg font-medium text-foreground italic pl-6">
-                  "공공데이터는 원칙적으로 공개되어야 하며, 이는 국가의 투명성과 혁신을 위한
-                  기반이다."
+                  "공공데이터는 원칙적으로 공개되어야 하며, 이는 국가의 투명성과
+                  혁신을 위한 기반이다."
                 </blockquote>
               </CardContent>
             </Card>
@@ -463,7 +479,9 @@ export default function About() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Globe className="h-5 w-5" />
               </div>
-              <h2 className="text-2xl font-bold">2. 핵심 철학: 오픈 바이 디폴트</h2>
+              <h2 className="text-2xl font-bold">
+                2. 핵심 철학: 오픈 바이 디폴트
+              </h2>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               <Card className="shadow-sm">
@@ -473,8 +491,9 @@ export default function About() {
                   </div>
                   <h3 className="text-xl font-bold">기본 공개 원칙</h3>
                   <p className="text-muted-foreground text-sm">
-                    2016년 디지털 공화국법(Loi pour une République numérique)을 통해 특정 예외를
-                    제외한 모든 정부 데이터의 기본 공개를 법제화했습니다.
+                    2016년 디지털 공화국법(Loi pour une République numérique)을
+                    통해 특정 예외를 제외한 모든 정부 데이터의 기본 공개를
+                    법제화했습니다.
                   </p>
                 </CardContent>
               </Card>
@@ -485,8 +504,9 @@ export default function About() {
                   </div>
                   <h3 className="text-xl font-bold">Etalab 라이선스</h3>
                   <p className="text-muted-foreground text-sm">
-                    출처 표기만을 요구하는 유연한 자체 오픈 라이선스(Licence Ouverte)를 개발해
-                    데이터의 상업적·비상업적 재사용을 극대화했습니다.
+                    출처 표기만을 요구하는 유연한 자체 오픈 라이선스(Licence
+                    Ouverte)를 개발해 데이터의 상업적·비상업적 재사용을
+                    극대화했습니다.
                   </p>
                 </CardContent>
               </Card>
@@ -514,23 +534,33 @@ export default function About() {
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">
-                      <div className={`p-2 rounded-lg ${item.highlight ? "bg-primary/10" : "bg-muted"}`}>
-                        <Icon className={`h-4 w-4 ${item.highlight ? "text-primary" : "text-muted-foreground"}`} />
+                      <div
+                        className={`p-2 rounded-lg ${item.highlight ? "bg-primary/10" : "bg-muted"}`}
+                      >
+                        <Icon
+                          className={`h-4 w-4 ${item.highlight ? "text-primary" : "text-muted-foreground"}`}
+                        />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className={`font-semibold text-sm ${item.highlight ? "text-primary" : "text-foreground"}`}>
+                        <span
+                          className={`font-semibold text-sm ${item.highlight ? "text-primary" : "text-foreground"}`}
+                        >
                           {item.label}
                         </span>
                         <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-mono">
                           {item.tag}
                         </span>
                         {item.highlight && (
-                          <Badge className="text-xs" variant="default">신기능</Badge>
+                          <Badge className="text-xs" variant="default">
+                            신기능
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        {item.desc}
+                      </p>
                     </div>
                   </div>
                 );
@@ -573,11 +603,16 @@ export default function About() {
                   공식 가이드 (guides.data.gouv.fr)
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  Etalab이 공식 제공하는 가이드를 한국어로 번역·요약했습니다.
-                  각 카드의 링크를 클릭하면 프랑스어 원문 가이드로 이동합니다.
+                  Etalab이 공식 제공하는 가이드를 한국어로 번역·요약했습니다. 각
+                  카드의 링크를 클릭하면 프랑스어 원문 가이드로 이동합니다.
                 </p>
               </div>
-              <Button variant="outline" size="sm" asChild className="gap-1.5 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="gap-1.5 shrink-0"
+              >
                 <a
                   href="https://guides.data.gouv.fr/guides"
                   target="_blank"
@@ -615,9 +650,15 @@ export default function About() {
                       key={group.group}
                       className={`rounded-lg border p-3 ${group.groupBg} ${group.groupBorder} text-center`}
                     >
-                      <Icon className={`h-5 w-5 mx-auto mb-1.5 ${group.groupColor}`} />
-                      <p className="text-xs font-semibold text-foreground">{group.group}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{group.items.length}개 가이드</p>
+                      <Icon
+                        className={`h-5 w-5 mx-auto mb-1.5 ${group.groupColor}`}
+                      />
+                      <p className="text-xs font-semibold text-foreground">
+                        {group.group}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {group.items.length}개 가이드
+                      </p>
                     </div>
                   );
                 })}
@@ -633,9 +674,15 @@ export default function About() {
                 <div key={group.group}>
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <GroupIcon className={`h-5 w-5 ${group.groupColor}`} />
-                    <h3 className={`font-semibold text-lg ${group.groupColor}`}>{group.group}</h3>
-                    <span className="text-xs text-muted-foreground italic">— {group.groupFr}</span>
-                    <Badge variant="outline" className="text-xs ml-1">{group.items.length}개</Badge>
+                    <h3 className={`font-semibold text-lg ${group.groupColor}`}>
+                      {group.group}
+                    </h3>
+                    <span className="text-xs text-muted-foreground italic">
+                      — {group.groupFr}
+                    </span>
+                    <Badge variant="outline" className="text-xs ml-1">
+                      {group.items.length}개
+                    </Badge>
                     <a
                       href={group.groupUrl}
                       target="_blank"
@@ -664,7 +711,9 @@ export default function About() {
                               {guide.titleFr}
                             </p>
                           </div>
-                          <ArrowUpRight className={`h-4 w-4 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${group.groupColor}`} />
+                          <ArrowUpRight
+                            className={`h-4 w-4 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${group.groupColor}`}
+                          />
                         </div>
 
                         <p className="text-xs text-muted-foreground leading-relaxed flex-1">
@@ -682,7 +731,9 @@ export default function About() {
                           ))}
                         </div>
 
-                        <div className={`mt-3 pt-3 border-t flex items-center gap-1 text-xs ${group.groupColor} font-medium`}>
+                        <div
+                          className={`mt-3 pt-3 border-t flex items-center gap-1 text-xs ${group.groupColor} font-medium`}
+                        >
                           <CheckCircle className="h-3 w-3" />
                           guides.data.gouv.fr 공식 가이드
                         </div>
