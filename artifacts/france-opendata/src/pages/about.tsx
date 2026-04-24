@@ -433,9 +433,7 @@ export default function About() {
         <h1 className="text-4xl font-bold tracking-tight">
           프랑스 공공데이터 포털 벤치마킹
         </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          대한민국 디지털 플랫폼 정부 구현을 위한 data.gouv.fr 분석 보고서
-        </p>
+
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
