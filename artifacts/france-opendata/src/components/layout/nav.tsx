@@ -22,7 +22,7 @@ export function Nav() {
               FR
             </div>
             <span className="font-bold text-xl tracking-tight hidden sm:inline-block">
-              프랑스 공공데이터 포털 🇫🇷
+              프랑스 공공데이터 생태계 탐색 🇫🇷
             </span>
           </Link>
           <nav className="hidden md:flex gap-6">
