@@ -142,11 +142,12 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [{ role: "user", content: query }];
 
-  const MAX_LOOPS = 50; // safety cap only — loop exits naturally on end_turn
+  const MAX_LOOPS = 50; // safety cap — loop exits naturally on end_turn
   let loops = 0;
   let toolCallCount = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let naturalExit = false;
 
   send("status", { step: "searching", message: "MiniMax M2.7 추론 및 데이터 수집 중..." });
 
@@ -194,7 +195,7 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
       }
     }
 
-    if (message.stop_reason === "end_turn") break;
+    if (message.stop_reason === "end_turn") { naturalExit = true; break; }
 
     if (message.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
       messages.push({ role: "assistant", content: message.content });
@@ -222,7 +223,39 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
       messages.push({ role: "assistant", content: message.content });
       messages.push({ role: "user", content: "지금까지 수집한 정보를 바탕으로 한국어로 분석 결과를 작성해주세요." });
     } else {
+      naturalExit = true;
       break;
     }
+  }
+
+  // 50회 안전 상한에 도달한 경우 — 지금까지 수집한 내용으로 최종 종합 보고
+  if (!naturalExit && !signal?.aborted) {
+    send("status", { step: "writing", message: "최대 탐색 횟수 도달 · 지금까지의 내용을 종합합니다..." });
+    messages.push({ role: "user", content: "지금까지 수집한 모든 정보를 바탕으로 한국어로 종합 분석 결과를 작성해주세요. 더 이상 도구를 호출하지 말고 최종 답변만 작성하세요." });
+
+    const summaryStream = minimax.messages.stream({
+      model: MINIMAX_MODEL,
+      max_tokens: 32000,
+      system: SYSTEM_PROMPT,
+      messages,
+    });
+
+    for await (const event of summaryStream) {
+      if (signal?.aborted) break;
+      if (event.type === "content_block_start") {
+        const block = event.content_block as { type: string };
+        if (block.type === "thinking") send("thinking_start", {});
+        else if (block.type === "text") { send("thinking_stop", {}); send("status", { step: "writing", message: "종합 답변 작성 중..." }); }
+      } else if (event.type === "content_block_delta") {
+        const delta = event.delta as { type: string; thinking?: string; text?: string };
+        if (delta.type === "thinking_delta" && delta.thinking) send("thinking_delta", { content: delta.thinking });
+        else if (delta.type === "text_delta" && delta.text) send("content", { content: delta.text });
+      }
+    }
+
+    const summaryMessage = await summaryStream.finalMessage();
+    totalInputTokens += summaryMessage.usage?.input_tokens ?? 0;
+    totalOutputTokens += summaryMessage.usage?.output_tokens ?? 0;
+    send("usage", { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
   }
 }
