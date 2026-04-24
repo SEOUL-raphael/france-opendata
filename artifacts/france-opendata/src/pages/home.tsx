@@ -154,7 +154,7 @@ export default function Home() {
                       </CardTitle>
                       <CardDescription className="flex items-center gap-2 mt-2">
                         <Building2 className="h-3 w-3" />
-                        {dataset.organization?.name || "Unknown Organization"}
+                        {dataset.organization?.name || "기관 미상"}
                       </CardDescription>
                     </div>
                     <Badge variant="outline" className="shrink-0 bg-primary/5">

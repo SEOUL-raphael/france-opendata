@@ -78,11 +78,17 @@ export default function Dataservices() {
                 </div>
               </CardContent>
               <CardFooter className="pt-0 mt-auto">
-                <Button variant="secondary" className="w-full" asChild>
-                  <a href={service.page ?? undefined} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-                    공식 문서 보기 <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Button>
+                {service.page ? (
+                  <Button variant="secondary" className="w-full" asChild>
+                    <a href={service.page} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                      공식 문서 보기 <ArrowRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : (
+                  <Button variant="secondary" className="w-full" disabled>
+                    문서 없음
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))}

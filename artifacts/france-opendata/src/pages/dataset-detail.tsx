@@ -150,7 +150,7 @@ export default function DatasetDetail() {
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1 flex items-center gap-1.5"><Repeat className="h-3.5 w-3.5" /> 주기</div>
-                  <div className="font-medium capitalize">{dataset.frequency || "unknown"}</div>
+                  <div className="font-medium capitalize">{dataset.frequency || "미정"}</div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-muted-foreground mb-1 flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" /> 라이선스</div>
