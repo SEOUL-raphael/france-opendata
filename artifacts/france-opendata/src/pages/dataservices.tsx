@@ -140,22 +140,16 @@ export default function Dataservices() {
                 </CardContent>
 
                 <CardFooter className="pt-0 gap-2">
-                  {service.page ? (
-                    <Button variant="secondary" className="flex-1" asChild>
-                      <a
-                        href={service.page}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2"
-                      >
-                        공식 문서 <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    </Button>
-                  ) : (
-                    <Button variant="secondary" className="flex-1" disabled>
-                      문서 없음
-                    </Button>
-                  )}
+                  <Button variant="secondary" className="flex-1" asChild>
+                    <a
+                      href={service.page || `https://www.data.gouv.fr/dataservices/${service.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2"
+                    >
+                      {service.page ? "공식 문서" : "data.gouv.fr 페이지"} <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </Button>
                   {service.base_api_url && (
                     <Button variant="outline" size="icon" asChild title="API 엔드포인트 열기">
                       <a
