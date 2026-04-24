@@ -36,15 +36,18 @@ import { usePortalStats } from "@/hooks/use-datagouv";
 
 const MCP_EXAMPLES = [
   {
-    label: "파리 인구 관련 데이터셋을 찾아주고, 바로 조회 가능한 표 형식 리소스가 있으면 추천해줘.",
+    label:
+      "파리 인구 관련 데이터셋을 찾아주고, 바로 조회 가능한 표 형식 리소스가 있으면 추천해줘.",
     searchTerm: "paris population recensement",
   },
   {
-    label: "프랑스 부동산 가격 데이터를 찾고, 먼저 어떤 데이터셋부터 살펴보면 좋은지 요약해줘.",
+    label:
+      "프랑스 부동산 가격 데이터를 찾고, 먼저 어떤 데이터셋부터 살펴보면 좋은지 요약해줘.",
     searchTerm: "prix immobilier foncier transactions",
   },
   {
-    label: "파리의 최근 인구 데이터를 얻으려면 어떤 dataset/resource를 봐야 하는지 단계별로 알려줘.",
+    label:
+      "파리의 최근 인구 데이터를 얻으려면 어떤 dataset/resource를 봐야 하는지 단계별로 알려줘.",
     searchTerm: "paris population statistiques demographiques",
   },
 ];
@@ -101,8 +104,16 @@ interface McpSearchState {
   tokenUsage: TokenUsage;
 }
 
-function extractDatasetsFromResult(toolName: string, result: unknown): DatasetCard[] {
-  if (!["search_datasets", "get_dataset_info", "list_dataset_resources"].includes(toolName)) return [];
+function extractDatasetsFromResult(
+  toolName: string,
+  result: unknown,
+): DatasetCard[] {
+  if (
+    !["search_datasets", "get_dataset_info", "list_dataset_resources"].includes(
+      toolName,
+    )
+  )
+    return [];
 
   try {
     if (Array.isArray(result)) {
@@ -118,7 +129,14 @@ function extractDatasetsFromResult(toolName: string, result: unknown): DatasetCa
     if (result && typeof result === "object" && !Array.isArray(result)) {
       const d = result as Record<string, unknown>;
       if (d.id && d.title) {
-        return [{ id: String(d.id), title: String(d.title), organization: d.organization ? String(d.organization) : undefined, url: `https://www.data.gouv.fr/datasets/${d.id}` }];
+        return [
+          {
+            id: String(d.id),
+            title: String(d.title),
+            organization: d.organization ? String(d.organization) : undefined,
+            url: `https://www.data.gouv.fr/datasets/${d.id}`,
+          },
+        ];
       }
     }
     if (typeof result === "string") {
@@ -138,7 +156,12 @@ function extractDatasetsFromResult(toolName: string, result: unknown): DatasetCa
             if (lines[j].trim() === "" && id) break;
           }
           if (id && title) {
-            datasets.push({ id, title, organization: org || undefined, url: `https://www.data.gouv.fr/datasets/${id}` });
+            datasets.push({
+              id,
+              title,
+              organization: org || undefined,
+              url: `https://www.data.gouv.fr/datasets/${id}`,
+            });
           }
         }
       }
@@ -159,7 +182,10 @@ function deduplicateDatasets(datasets: DatasetCard[]): DatasetCard[] {
   });
 }
 
-function sortDatasetsByContent(datasets: DatasetCard[], content: string): DatasetCard[] {
+function sortDatasetsByContent(
+  datasets: DatasetCard[],
+  content: string,
+): DatasetCard[] {
   if (!content) return datasets;
   const lower = content.toLowerCase();
   return [...datasets].sort((a, b) => {
@@ -188,129 +214,152 @@ function useMcpSearch() {
   const [state, setState] = useState<McpSearchState>(INITIAL_MCP_STATE);
   const wsRef = useRef<WebSocket | null>(null);
 
-  const handleEvent = useCallback((event: string, data: Record<string, unknown>) => {
-    if (event === "status") {
-      setState((prev) => ({
-        ...prev,
-        status: (data.step as McpSearchState["status"]) ?? "thinking",
-        statusMessage: (data.message as string) ?? "",
-      }));
-    } else if (event === "tool_call") {
-      setState((prev) => ({
-        ...prev,
-        status: "searching",
-        statusMessage: `MCP 도구 호출: ${data.name as string}`,
-        toolCalls: [
-          ...prev.toolCalls,
-          {
-            name: data.name as string,
-            args: (data.args as Record<string, unknown>) ?? {},
-            callCount: (data.callCount as number) ?? prev.toolCalls.length + 1,
+  const handleEvent = useCallback(
+    (event: string, data: Record<string, unknown>) => {
+      if (event === "status") {
+        setState((prev) => ({
+          ...prev,
+          status: (data.step as McpSearchState["status"]) ?? "thinking",
+          statusMessage: (data.message as string) ?? "",
+        }));
+      } else if (event === "tool_call") {
+        setState((prev) => ({
+          ...prev,
+          status: "searching",
+          statusMessage: `MCP 도구 호출: ${data.name as string}`,
+          toolCalls: [
+            ...prev.toolCalls,
+            {
+              name: data.name as string,
+              args: (data.args as Record<string, unknown>) ?? {},
+              callCount:
+                (data.callCount as number) ?? prev.toolCalls.length + 1,
+            },
+          ],
+        }));
+      } else if (event === "tool_result") {
+        const extracted = extractDatasetsFromResult(
+          data.name as string,
+          data.result,
+        );
+        setState((prev) => ({
+          ...prev,
+          toolCalls: prev.toolCalls.map((tc) =>
+            tc.callCount === (data.callCount as number)
+              ? { ...tc, result: data.result }
+              : tc,
+          ),
+          datasets:
+            extracted.length > 0
+              ? deduplicateDatasets([...prev.datasets, ...extracted])
+              : prev.datasets,
+        }));
+      } else if (event === "usage") {
+        setState((prev) => ({
+          ...prev,
+          tokenUsage: {
+            input: (data.inputTokens as number) ?? prev.tokenUsage.input,
+            output: (data.outputTokens as number) ?? prev.tokenUsage.output,
           },
-        ],
-      }));
-    } else if (event === "tool_result") {
-      const extracted = extractDatasetsFromResult(data.name as string, data.result);
-      setState((prev) => ({
-        ...prev,
-        toolCalls: prev.toolCalls.map((tc) =>
-          tc.callCount === (data.callCount as number)
-            ? { ...tc, result: data.result }
-            : tc
-        ),
-        datasets: extracted.length > 0
-          ? deduplicateDatasets([...prev.datasets, ...extracted])
-          : prev.datasets,
-      }));
-    } else if (event === "usage") {
-      setState((prev) => ({
-        ...prev,
-        tokenUsage: {
-          input: (data.inputTokens as number) ?? prev.tokenUsage.input,
-          output: (data.outputTokens as number) ?? prev.tokenUsage.output,
-        },
-      }));
-    } else if (event === "thinking_start") {
-      setState((prev) => ({ ...prev, status: "thinking", isThinking: true }));
-    } else if (event === "thinking_delta") {
-      setState((prev) => ({
-        ...prev,
-        status: "thinking",
-        isThinking: true,
-        thinking: prev.thinking + ((data.content as string) ?? ""),
-      }));
-    } else if (event === "thinking_stop") {
-      setState((prev) => ({ ...prev, isThinking: false }));
-    } else if (event === "content") {
-      setState((prev) => ({
-        ...prev,
-        content: prev.content + ((data.content as string) ?? ""),
-      }));
-    } else if (event === "done") {
-      setState((prev) => ({
-        ...prev,
-        status: "done",
-        statusMessage: "분석 완료",
-        datasets: sortDatasetsByContent(prev.datasets, prev.content),
-      }));
-    } else if (event === "error") {
-      setState((prev) => ({
-        ...prev,
-        status: "error",
-        errorMessage: (data.message as string) ?? "알 수 없는 오류",
-      }));
-    }
-  }, []);
-
-  const search = useCallback((query: string) => {
-    // Close existing connection
-    if (wsRef.current) {
-      wsRef.current.onmessage = null;
-      wsRef.current.onerror = null;
-      wsRef.current.onclose = null;
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setState({ ...INITIAL_MCP_STATE, status: "searching", statusMessage: "WebSocket 연결 중..." });
-
-    const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${wsProtocol}//${location.host}/api/ws/search`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setState((prev) => ({ ...prev, statusMessage: "MCP 도구 선택 중..." }));
-      ws.send(JSON.stringify({ query }));
-    };
-
-    ws.onmessage = (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data as string) as { event: string; data: Record<string, unknown> };
-        handleEvent(msg.event, msg.data);
-      } catch {
-        // skip malformed
+        }));
+      } else if (event === "thinking_start") {
+        setState((prev) => ({ ...prev, status: "thinking", isThinking: true }));
+      } else if (event === "thinking_delta") {
+        setState((prev) => ({
+          ...prev,
+          status: "thinking",
+          isThinking: true,
+          thinking: prev.thinking + ((data.content as string) ?? ""),
+        }));
+      } else if (event === "thinking_stop") {
+        setState((prev) => ({ ...prev, isThinking: false }));
+      } else if (event === "content") {
+        setState((prev) => ({
+          ...prev,
+          content: prev.content + ((data.content as string) ?? ""),
+        }));
+      } else if (event === "done") {
+        setState((prev) => ({
+          ...prev,
+          status: "done",
+          statusMessage: "분석 완료",
+          datasets: sortDatasetsByContent(prev.datasets, prev.content),
+        }));
+      } else if (event === "error") {
+        setState((prev) => ({
+          ...prev,
+          status: "error",
+          errorMessage: (data.message as string) ?? "알 수 없는 오류",
+        }));
       }
-    };
+    },
+    [],
+  );
 
-    ws.onerror = () => {
-      setState((prev) => ({
-        ...prev,
-        status: "error",
-        errorMessage: "WebSocket 연결 오류가 발생했습니다. 다시 시도해주세요.",
-      }));
-    };
-
-    ws.onclose = (e) => {
-      if (e.code !== 1000 && e.code !== 1001) {
-        setState((prev) => {
-          if (prev.status === "searching" || prev.status === "thinking") {
-            return { ...prev, status: "error", errorMessage: "연결이 끊어졌습니다. 다시 시도해주세요." };
-          }
-          return prev;
-        });
+  const search = useCallback(
+    (query: string) => {
+      // Close existing connection
+      if (wsRef.current) {
+        wsRef.current.onmessage = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
       }
-    };
-  }, [handleEvent]);
+
+      setState({
+        ...INITIAL_MCP_STATE,
+        status: "searching",
+        statusMessage: "WebSocket 연결 중...",
+      });
+
+      const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(`${wsProtocol}//${location.host}/api/ws/search`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setState((prev) => ({ ...prev, statusMessage: "MCP 도구 선택 중..." }));
+        ws.send(JSON.stringify({ query }));
+      };
+
+      ws.onmessage = (e: MessageEvent) => {
+        try {
+          const msg = JSON.parse(e.data as string) as {
+            event: string;
+            data: Record<string, unknown>;
+          };
+          handleEvent(msg.event, msg.data);
+        } catch {
+          // skip malformed
+        }
+      };
+
+      ws.onerror = () => {
+        setState((prev) => ({
+          ...prev,
+          status: "error",
+          errorMessage:
+            "WebSocket 연결 오류가 발생했습니다. 다시 시도해주세요.",
+        }));
+      };
+
+      ws.onclose = (e) => {
+        if (e.code !== 1000 && e.code !== 1001) {
+          setState((prev) => {
+            if (prev.status === "searching" || prev.status === "thinking") {
+              return {
+                ...prev,
+                status: "error",
+                errorMessage: "연결이 끊어졌습니다. 다시 시도해주세요.",
+              };
+            }
+            return prev;
+          });
+        }
+      };
+    },
+    [handleEvent],
+  );
 
   const reset = useCallback(() => {
     if (wsRef.current) {
@@ -323,9 +372,12 @@ function useMcpSearch() {
     setState(INITIAL_MCP_STATE);
   }, []);
 
-  useEffect(() => () => {
-    wsRef.current?.close();
-  }, []);
+  useEffect(
+    () => () => {
+      wsRef.current?.close();
+    },
+    [],
+  );
 
   return { state, search, reset };
 }
@@ -335,23 +387,70 @@ function SimpleMarkdown({ text }: { text: string }) {
   return (
     <div className="space-y-1 text-sm leading-relaxed">
       {lines.map((line, i) => {
-        if (/^### /.test(line)) return <h3 key={i} className="font-bold text-base mt-3 mb-1">{line.slice(4)}</h3>;
-        if (/^## /.test(line)) return <h2 key={i} className="font-bold text-lg mt-4 mb-1">{line.slice(3)}</h2>;
-        if (/^# /.test(line)) return <h1 key={i} className="font-bold text-xl mt-4 mb-2">{line.slice(2)}</h1>;
+        if (/^### /.test(line))
+          return (
+            <h3 key={i} className="font-bold text-base mt-3 mb-1">
+              {line.slice(4)}
+            </h3>
+          );
+        if (/^## /.test(line))
+          return (
+            <h2 key={i} className="font-bold text-lg mt-4 mb-1">
+              {line.slice(3)}
+            </h2>
+          );
+        if (/^# /.test(line))
+          return (
+            <h1 key={i} className="font-bold text-xl mt-4 mb-2">
+              {line.slice(2)}
+            </h1>
+          );
         if (/^\d+\. \*\*/.test(line)) {
-          const formatted = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`(.+?)`/g, "<code>$1</code>");
-          return <p key={i} className="ml-2 mt-2" dangerouslySetInnerHTML={{ __html: formatted }} />;
+          const formatted = line
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/`(.+?)`/g, "<code>$1</code>");
+          return (
+            <p
+              key={i}
+              className="ml-2 mt-2"
+              dangerouslySetInnerHTML={{ __html: formatted }}
+            />
+          );
         }
         if (/^[-*] /.test(line)) {
-          const content = line.slice(2).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-          return <li key={i} className="ml-4 list-disc text-foreground/90" dangerouslySetInnerHTML={{ __html: content }} />;
+          const content = line
+            .slice(2)
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+          return (
+            <li
+              key={i}
+              className="ml-4 list-disc text-foreground/90"
+              dangerouslySetInnerHTML={{ __html: content }}
+            />
+          );
         }
         if (/^\*\*/.test(line)) {
-          const formatted = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`(.+?)`/g, "<code class='bg-muted px-1 rounded text-xs'>$1</code>");
-          return <p key={i} className="mt-1" dangerouslySetInnerHTML={{ __html: formatted }} />;
+          const formatted = line
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(
+              /`(.+?)`/g,
+              "<code class='bg-muted px-1 rounded text-xs'>$1</code>",
+            );
+          return (
+            <p
+              key={i}
+              className="mt-1"
+              dangerouslySetInnerHTML={{ __html: formatted }}
+            />
+          );
         }
         if (line.trim() === "") return <div key={i} className="h-1" />;
-        const formatted = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`(.+?)`/g, "<code class='bg-muted px-1 rounded text-xs'>$1</code>");
+        const formatted = line
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(
+            /`(.+?)`/g,
+            "<code class='bg-muted px-1 rounded text-xs'>$1</code>",
+          );
         return <p key={i} dangerouslySetInnerHTML={{ __html: formatted }} />;
       })}
     </div>
@@ -359,10 +458,15 @@ function SimpleMarkdown({ text }: { text: string }) {
 }
 
 function StatusDot({ ok }: { ok: boolean | null }) {
-  if (ok === null) return <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" />;
-  return ok
-    ? <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-    : <span className="inline-block h-2 w-2 rounded-full bg-red-400" />;
+  if (ok === null)
+    return (
+      <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" />
+    );
+  return ok ? (
+    <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+  ) : (
+    <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
+  );
 }
 
 export default function Home() {
@@ -387,7 +491,10 @@ export default function Home() {
 
   useEffect(() => {
     if (mcp.content && contentRef.current) {
-      contentRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      contentRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   }, [mcp.content.length > 0]);
 
@@ -395,10 +502,17 @@ export default function Home() {
     setHealthLoading(true);
     try {
       const r = await fetch("/api/mcp/health");
-      const d = await r.json() as McpHealthData;
+      const d = (await r.json()) as McpHealthData;
       setMcpHealth(d);
     } catch {
-      setMcpHealth({ status: "error", datagouv: "unreachable", mcp: "unreachable", minimax: "unknown", model: "MiniMax-M1", mcpEndpoint: "https://mcp.data.gouv.fr/mcp" });
+      setMcpHealth({
+        status: "error",
+        datagouv: "unreachable",
+        mcp: "unreachable",
+        minimax: "unknown",
+        model: "MiniMax-M1",
+        mcpEndpoint: "https://mcp.data.gouv.fr/mcp",
+      });
     } finally {
       setHealthLoading(false);
     }
@@ -421,7 +535,9 @@ export default function Home() {
   };
 
   const toggleToolCall = (i: number) => {
-    setCollapsedToolCalls((prev) => prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]);
+    setCollapsedToolCalls((prev) =>
+      prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
+    );
   };
 
   return (
@@ -437,7 +553,10 @@ export default function Home() {
             프랑스 공공데이터 생태계 탐색
           </h1>
 
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto mt-6 relative">
+          <form
+            onSubmit={handleSearch}
+            className="max-w-2xl mx-auto mt-6 relative"
+          >
             <div className="relative flex items-center">
               <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
               <Input
@@ -449,32 +568,49 @@ export default function Home() {
               <Button
                 type="submit"
                 className="absolute right-2 h-10 rounded-full px-5"
-                disabled={mcp.status === "searching" || mcp.status === "thinking"}
+                disabled={
+                  mcp.status === "searching" || mcp.status === "thinking"
+                }
               >
-                {(mcp.status === "searching" || mcp.status === "thinking") ? (
+                {mcp.status === "searching" || mcp.status === "thinking" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
-                ) : "AI 분석"}
+                ) : (
+                  "AI 분석"
+                )}
               </Button>
             </div>
           </form>
 
           {/* Example questions */}
           <div className="max-w-2xl mx-auto space-y-2 mt-2">
-            <p className="text-xs text-muted-foreground mb-2">예시 질문 (클릭하면 바로 실행)</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              예시 질문 (클릭하면 바로 실행)
+            </p>
             {MCP_EXAMPLES.map((ex, i) => (
               <button
                 key={i}
                 onClick={() => handleExample(ex.label)}
-                disabled={mcp.status === "searching" || mcp.status === "thinking"}
+                disabled={
+                  mcp.status === "searching" || mcp.status === "thinking"
+                }
                 className="w-full text-left px-4 py-2.5 rounded-lg border bg-background hover:bg-muted/60 hover:border-primary/40 transition-all text-sm text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-start gap-2 group"
               >
-                <span className="text-primary mt-0.5 shrink-0 text-xs font-mono">{String(i + 1).padStart(2, "0")}</span>
-                <span className="group-hover:text-foreground transition-colors">{ex.label}</span>
+                <span className="text-primary mt-0.5 shrink-0 text-xs font-mono">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="group-hover:text-foreground transition-colors">
+                  {ex.label}
+                </span>
               </button>
             ))}
             {isActive && (
               <div className="flex justify-end pt-1">
-                <Button variant="ghost" size="sm" className="text-muted-foreground text-xs" onClick={reset}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground text-xs"
+                  onClick={reset}
+                >
                   초기화
                 </Button>
               </div>
@@ -493,10 +629,30 @@ export default function Home() {
           ) : stats ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
               {[
-                { icon: Database, label: "데이터셋", value: stats.metrics?.datasets, href: "https://www.data.gouv.fr/fr/datasets/" },
-                { icon: Building2, label: "조직", value: stats.metrics?.organizations, href: "https://www.data.gouv.fr/fr/organizations/" },
-                { icon: Layers, label: "API 서비스", value: stats.metrics?.dataservices, href: "https://www.data.gouv.fr/fr/dataservices/" },
-                { icon: Repeat, label: "활용 사례", value: stats.metrics?.reuses, href: "https://www.data.gouv.fr/fr/reuses/" },
+                {
+                  icon: Database,
+                  label: "데이터셋",
+                  value: stats.metrics?.datasets,
+                  href: "https://www.data.gouv.fr/fr/datasets/",
+                },
+                {
+                  icon: Building2,
+                  label: "조직",
+                  value: stats.metrics?.organizations,
+                  href: "https://www.data.gouv.fr/fr/organizations/",
+                },
+                {
+                  icon: Layers,
+                  label: "API 서비스",
+                  value: stats.metrics?.dataservices,
+                  href: "https://www.data.gouv.fr/fr/dataservices/",
+                },
+                {
+                  icon: Repeat,
+                  label: "활용 사례",
+                  value: stats.metrics?.reuses,
+                  href: "https://www.data.gouv.fr/fr/reuses/",
+                },
               ].map(({ icon: Icon, label, value, href }) => (
                 <a
                   key={label}
@@ -509,7 +665,9 @@ export default function Home() {
                     <Icon className="h-4 w-4" />
                     <span className="font-medium text-xs">{label}</span>
                   </div>
-                  <div className="text-xl font-bold">{value?.toLocaleString() ?? "—"}</div>
+                  <div className="text-xl font-bold">
+                    {value?.toLocaleString() ?? "—"}
+                  </div>
                 </a>
               ))}
             </div>
@@ -520,7 +678,6 @@ export default function Home() {
       {/* MCP Results / Tools Panel */}
       <section className="py-10 px-4 sm:px-8 flex-1">
         <div className="max-w-4xl mx-auto space-y-5">
-
           {!isActive && (
             <div className="space-y-6">
               {/* MCP Connection Status */}
@@ -538,9 +695,11 @@ export default function Home() {
                       onClick={checkHealth}
                       disabled={healthLoading}
                     >
-                      {healthLoading
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : <RefreshCw className="h-3 w-3" />}
+                      {healthLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
                       연결 상태 확인
                     </Button>
                   </div>
@@ -553,15 +712,25 @@ export default function Home() {
                         value: "https://mcp.data.gouv.fr/mcp",
                         icon: Activity,
                         status: mcpHealth ? mcpHealth.mcp === "ok" : null,
-                        statusLabel: mcpHealth ? (mcpHealth.mcp === "ok" ? "연결됨" : "연결 안됨") : "미확인",
+                        statusLabel: mcpHealth
+                          ? mcpHealth.mcp === "ok"
+                            ? "연결됨"
+                            : "연결 안됨"
+                          : "미확인",
                         mono: true,
                       },
                       {
                         label: "연결 모델",
-                        value: mcpHealth?.model ?? "GPT-4.1 Mini",
+                        value: mcpHealth?.model ?? "MiniMax-M2.7",
                         icon: Cpu,
-                        status: mcpHealth ? mcpHealth.minimax === "configured" : null,
-                        statusLabel: mcpHealth ? (mcpHealth.minimax === "configured" ? "API 설정됨" : "미설정") : "미확인",
+                        status: mcpHealth
+                          ? mcpHealth.minimax === "configured"
+                          : null,
+                        statusLabel: mcpHealth
+                          ? mcpHealth.minimax === "configured"
+                            ? "API 설정됨"
+                            : "미설정"
+                          : "미확인",
                         mono: false,
                       },
                       {
@@ -569,26 +738,54 @@ export default function Home() {
                         value: "api.data.gouv.fr/v1",
                         icon: Zap,
                         status: mcpHealth ? mcpHealth.datagouv === "ok" : null,
-                        statusLabel: mcpHealth ? (mcpHealth.datagouv === "ok" ? "정상" : "응답 없음") : "미확인",
+                        statusLabel: mcpHealth
+                          ? mcpHealth.datagouv === "ok"
+                            ? "정상"
+                            : "응답 없음"
+                          : "미확인",
                         mono: true,
                       },
-                    ].map(({ label, value, icon: Icon, status, statusLabel, mono }) => (
-                      <div key={label} className="flex flex-col gap-1.5 p-3 rounded-lg bg-muted/30 border">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Icon className="h-3.5 w-3.5" />
-                            {label}
+                    ].map(
+                      ({
+                        label,
+                        value,
+                        icon: Icon,
+                        status,
+                        statusLabel,
+                        mono,
+                      }) => (
+                        <div
+                          key={label}
+                          className="flex flex-col gap-1.5 p-3 rounded-lg bg-muted/30 border"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Icon className="h-3.5 w-3.5" />
+                              {label}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <StatusDot ok={status} />
+                              <span
+                                className={
+                                  status === null
+                                    ? "text-muted-foreground"
+                                    : status
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-red-500"
+                                }
+                              >
+                                {statusLabel}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <StatusDot ok={status} />
-                            <span className={status === null ? "text-muted-foreground" : status ? "text-green-600 dark:text-green-400" : "text-red-500"}>
-                              {statusLabel}
-                            </span>
-                          </div>
+                          <p
+                            className={`text-xs font-medium truncate ${mono ? "font-mono text-foreground/70" : "text-foreground"}`}
+                          >
+                            {value}
+                          </p>
                         </div>
-                        <p className={`text-xs font-medium truncate ${mono ? "font-mono text-foreground/70" : "text-foreground"}`}>{value}</p>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -597,21 +794,39 @@ export default function Home() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Wrench className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">사용 가능한 MCP 도구</h2>
-                  <Badge variant="secondary" className="text-xs">{mcpTools.length}개</Badge>
+                  <h2 className="text-sm font-semibold">
+                    사용 가능한 MCP 도구
+                  </h2>
+                  <Badge variant="secondary" className="text-xs">
+                    {mcpTools.length}개
+                  </Badge>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {mcpTools.map((tool) => (
-                    <div key={tool.name} className="rounded-lg border bg-card p-3.5 space-y-2 hover:border-primary/30 transition-colors">
+                    <div
+                      key={tool.name}
+                      className="rounded-lg border bg-card p-3.5 space-y-2 hover:border-primary/30 transition-colors"
+                    >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-semibold leading-snug">{tool.label}</p>
-                        <span className="text-xs font-mono text-primary/70 shrink-0">{tool.name}</span>
+                        <p className="text-xs font-semibold leading-snug">
+                          {tool.label}
+                        </p>
+                        <span className="text-xs font-mono text-primary/70 shrink-0">
+                          {tool.name}
+                        </span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{tool.description}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {tool.description}
+                      </p>
                       <div className="flex flex-wrap gap-1">
                         {tool.params.map((p) => (
-                          <span key={p} className="text-xs bg-muted px-1.5 py-0.5 rounded-sm font-mono">{p}</span>
+                          <span
+                            key={p}
+                            className="text-xs bg-muted px-1.5 py-0.5 rounded-sm font-mono"
+                          >
+                            {p}
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -627,7 +842,9 @@ export default function Home() {
 
               <div className="text-center py-6 text-muted-foreground space-y-2 border-t">
                 <Brain className="h-10 w-10 mx-auto opacity-15" />
-                <p className="text-sm">위 예시 질문을 클릭하거나 직접 입력해 MCP AI 분석을 시작하세요</p>
+                <p className="text-sm">
+                  위 예시 질문을 클릭하거나 직접 입력해 MCP AI 분석을 시작하세요
+                </p>
               </div>
             </div>
           )}
@@ -636,7 +853,7 @@ export default function Home() {
             <>
               {/* Status Bar */}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                {(mcp.status === "searching" || mcp.status === "thinking") ? (
+                {mcp.status === "searching" || mcp.status === "thinking" ? (
                   <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
                 ) : mcp.status === "done" ? (
                   <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
@@ -645,7 +862,9 @@ export default function Home() {
                 ) : (
                   <Cpu className="h-4 w-4 text-primary shrink-0" />
                 )}
-                <span className="text-sm font-medium flex-1 min-w-0 truncate">{mcp.statusMessage}</span>
+                <span className="text-sm font-medium flex-1 min-w-0 truncate">
+                  {mcp.statusMessage}
+                </span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {mcp.toolCalls.length > 0 && (
                     <Badge variant="outline" className="text-xs">
@@ -653,7 +872,10 @@ export default function Home() {
                     </Badge>
                   )}
                   {(mcp.tokenUsage.input > 0 || mcp.tokenUsage.output > 0) && (
-                    <Badge variant="secondary" className="text-xs font-mono gap-1">
+                    <Badge
+                      variant="secondary"
+                      className="text-xs font-mono gap-1"
+                    >
                       <span className="text-muted-foreground">in</span>
                       {mcp.tokenUsage.input.toLocaleString()}
                       <span className="text-muted-foreground mx-0.5">·</span>
@@ -670,7 +892,9 @@ export default function Home() {
                 <Card className="border-destructive/30 bg-destructive/5">
                   <CardContent className="pt-5 flex items-center gap-3">
                     <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-                    <p className="text-sm text-destructive">{mcp.errorMessage}</p>
+                    <p className="text-sm text-destructive">
+                      {mcp.errorMessage}
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -681,37 +905,58 @@ export default function Home() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-4 w-4 text-orange-500" />
-                      <CardTitle className="text-base">MCP 도구 호출 내역</CardTitle>
+                      <CardTitle className="text-base">
+                        MCP 도구 호출 내역
+                      </CardTitle>
                       <Badge variant="outline" className="ml-auto text-xs">
                         {mcp.toolCalls.length}개 호출
                       </Badge>
                     </div>
-                    <CardDescription>Minimax AI가 선택하고 실행한 MCP 도구 시퀀스</CardDescription>
+                    <CardDescription>
+                      Minimax AI가 선택하고 실행한 MCP 도구 시퀀스
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2 pt-0">
                     {mcp.toolCalls.map((tc, i) => (
-                      <div key={i} className="rounded-md border bg-muted/30 overflow-hidden">
+                      <div
+                        key={i}
+                        className="rounded-md border bg-muted/30 overflow-hidden"
+                      >
                         <button
                           className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/50 transition-colors"
                           onClick={() => toggleToolCall(i)}
                         >
-                          <span className="text-xs font-mono text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                          <span className="text-xs font-mono text-muted-foreground w-4 shrink-0">
+                            {i + 1}
+                          </span>
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-xs font-mono font-semibold text-orange-600 dark:text-orange-400">{tc.name}</span>
-                            {Object.entries(tc.args).slice(0, 2).map(([k, v]) => (
-                              <span key={k} className="text-xs text-muted-foreground truncate">
-                                {k}=<span className="text-foreground/70">{JSON.stringify(v)}</span>
-                              </span>
-                            ))}
+                            <span className="text-xs font-mono font-semibold text-orange-600 dark:text-orange-400">
+                              {tc.name}
+                            </span>
+                            {Object.entries(tc.args)
+                              .slice(0, 2)
+                              .map(([k, v]) => (
+                                <span
+                                  key={k}
+                                  className="text-xs text-muted-foreground truncate"
+                                >
+                                  {k}=
+                                  <span className="text-foreground/70">
+                                    {JSON.stringify(v)}
+                                  </span>
+                                </span>
+                              ))}
                           </div>
-                          {tc.result
-                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            : <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-                          }
-                          {!collapsedToolCalls.includes(i)
-                            ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          }
+                          {tc.result ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                          ) : (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+                          )}
+                          {!collapsedToolCalls.includes(i) ? (
+                            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          )}
                         </button>
                         {!collapsedToolCalls.includes(i) && tc.result && (
                           <div className="border-t px-3 py-2 bg-muted/20">
@@ -737,13 +982,23 @@ export default function Home() {
                   >
                     <div className="flex items-center gap-2">
                       <Brain className="h-4 w-4 text-violet-500" />
-                      <CardTitle className="text-base text-violet-700 dark:text-violet-300">MiniMax M2.7 추론 과정</CardTitle>
-                      {mcp.isThinking && <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400 ml-1" />}
+                      <CardTitle className="text-base text-violet-700 dark:text-violet-300">
+                        MiniMax M2.7 추론 과정
+                      </CardTitle>
+                      {mcp.isThinking && (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400 ml-1" />
+                      )}
                       {!mcp.isThinking && mcp.thinking && (
-                        <span className="text-[10px] text-violet-400 ml-1">완료</span>
+                        <span className="text-[10px] text-violet-400 ml-1">
+                          완료
+                        </span>
                       )}
                       <button className="ml-auto text-violet-400">
-                        {showThinking ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        {showThinking ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                     {!showThinking && mcp.thinking && (
@@ -770,18 +1025,27 @@ export default function Home() {
               )}
 
               {/* AI Analysis */}
-              {(mcp.content || mcp.status === "thinking" || mcp.status === "writing") && (
+              {(mcp.content ||
+                mcp.status === "thinking" ||
+                mcp.status === "writing") && (
                 <div ref={contentRef}>
                   <Card>
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-primary" />
-                        <CardTitle className="text-base">AI 정책 분석</CardTitle>
+                        <CardTitle className="text-base">
+                          AI 정책 분석
+                        </CardTitle>
                         {mcp.status !== "done" && mcp.content && (
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />
                         )}
                         {mcp.status === "done" && (
-                          <Badge variant="secondary" className="ml-auto text-xs">분석 완료</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="ml-auto text-xs"
+                          >
+                            분석 완료
+                          </Badge>
                         )}
                       </div>
                       <CardDescription>
@@ -804,8 +1068,12 @@ export default function Home() {
                     <div className="mt-4">
                       <div className="flex items-center gap-2 mb-2.5">
                         <Database className="h-4 w-4 text-primary" />
-                        <h3 className="text-sm font-semibold">활용된 데이터셋</h3>
-                        <Badge variant="secondary" className="text-xs">{mcp.datasets.length}개</Badge>
+                        <h3 className="text-sm font-semibold">
+                          활용된 데이터셋
+                        </h3>
+                        <Badge variant="secondary" className="text-xs">
+                          {mcp.datasets.length}개
+                        </Badge>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {mcp.datasets.map((ds, idx) => (
@@ -817,19 +1085,27 @@ export default function Home() {
                             className={`flex items-start gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition-all group ${idx === 0 ? "border-primary/30 bg-primary/5" : ""}`}
                           >
                             <div className="shrink-0 flex flex-col items-center gap-1">
-                              <span className={`text-[10px] font-bold tabular-nums w-5 h-5 flex items-center justify-center rounded-full ${idx === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              <span
+                                className={`text-[10px] font-bold tabular-nums w-5 h-5 flex items-center justify-center rounded-full ${idx === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                              >
                                 {idx + 1}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">{ds.title}</p>
+                                <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                                  {ds.title}
+                                </p>
                                 {idx === 0 && (
-                                  <span className="shrink-0 text-[9px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">추천</span>
+                                  <span className="shrink-0 text-[9px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                    추천
+                                  </span>
                                 )}
                               </div>
                               {ds.organization && (
-                                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{ds.organization}</p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                  {ds.organization}
+                                </p>
                               )}
                             </div>
                             <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -841,9 +1117,13 @@ export default function Home() {
 
                   {mcp.status === "done" && (
                     <div className="mt-3 flex gap-2">
-                      <Button variant="outline" size="sm" onClick={reset} className="gap-1.5">
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        새 검색
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={reset}
+                        className="gap-1.5"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />새 검색
                       </Button>
                     </div>
                   )}
