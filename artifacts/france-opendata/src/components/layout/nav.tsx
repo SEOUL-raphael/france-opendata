@@ -19,9 +19,7 @@ export function Nav() {
             <div className="flex items-center justify-center w-8 h-8 rounded bg-primary text-primary-foreground font-bold text-lg">
               FR
             </div>
-            <span className="font-bold text-xl tracking-tight hidden sm:inline-block">
-              프랑스 공공데이터 생태계 탐색 🇫🇷
-            </span>
+            <span className="font-bold text-xl tracking-tight hidden sm:inline-block">프랑스 공공데이터 탐색 🇫🇷</span>
           </Link>
           <nav className="hidden md:flex gap-6">
             {navItems.map((item) => {
