@@ -394,8 +394,7 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
   };
 
   const systemPrompt = `Please understand the user's question and respond using the provided MCP tool.
-
-Please think and reason in Korean throughout the entire process, and output the final response in Korean.`;
+Please output the response in Korean.`;
 
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [
