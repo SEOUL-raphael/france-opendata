@@ -767,7 +767,7 @@ export default function Home() {
                         )}
                       </div>
                       <CardDescription>
-                        MiniMax M2.7 추론 · 도구 호출 {mcp.toolCalls.length}회 · 한국 정책결정자 관점
+                        MiniMax M2.7 추론 · 도구 호출 {mcp.toolCalls.length}회
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -790,19 +790,26 @@ export default function Home() {
                         <Badge variant="secondary" className="text-xs">{mcp.datasets.length}개</Badge>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {mcp.datasets.map((ds) => (
+                        {mcp.datasets.map((ds, idx) => (
                           <a
                             key={ds.id}
                             href={ds.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition-all group"
+                            className={`flex items-start gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition-all group ${idx === 0 ? "border-primary/30 bg-primary/5" : ""}`}
                           >
-                            <div className="shrink-0 mt-0.5">
-                              <Database className="h-3.5 w-3.5 text-primary/60 group-hover:text-primary transition-colors" />
+                            <div className="shrink-0 flex flex-col items-center gap-1">
+                              <span className={`text-[10px] font-bold tabular-nums w-5 h-5 flex items-center justify-center rounded-full ${idx === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                {idx + 1}
+                              </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">{ds.title}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">{ds.title}</p>
+                                {idx === 0 && (
+                                  <span className="shrink-0 text-[9px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">추천</span>
+                                )}
+                              </div>
                               {ds.organization && (
                                 <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{ds.organization}</p>
                               )}
