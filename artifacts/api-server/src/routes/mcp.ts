@@ -219,6 +219,19 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
         const r = await axios.get(`${DATAGOUV_BASE_URL}/dataservices/${args.dataservice_id}/`, { timeout: 10000 });
         return JSON.stringify(r.data);
       }
+      case "search_organizations": {
+        const r = await axios.get(`${DATAGOUV_BASE_URL}/organizations/`, {
+          params: { q: args.query ?? "", page_size: args.page_size ?? 5 },
+          timeout: 10000,
+        });
+        return JSON.stringify(
+          (r.data?.data ?? []).map((o: { id: string; name: string; description?: string; datasets?: { total?: number }; metrics?: { datasets?: number } }) => ({
+            id: o.id, name: o.name,
+            description: (o.description ?? "").substring(0, 200),
+            datasets_count: o.datasets?.total ?? o.metrics?.datasets ?? 0,
+          }))
+        );
+      }
       default:
         return JSON.stringify({ error: `Tool ${name} not implemented in fallback`, args });
     }
@@ -228,93 +241,15 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
 }
 
 const ANTHROPIC_TOOLS: Anthropic.Messages.Tool[] = [
-  {
-    name: "search_datasets",
-    description: "Search for datasets on data.gouv.fr by keyword. Returns titles, organizations, tags, and resource counts.",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Search query in French or English for best results" },
-        page_size: { type: "integer", description: "Number of results (default 5, max 20)" },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "search_dataservices",
-    description: "Search for data services (APIs) on data.gouv.fr.",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: { type: "string" },
-        page_size: { type: "integer" },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "get_dataset_info",
-    description: "Get detailed information about a specific dataset including all its resources.",
-    input_schema: {
-      type: "object",
-      properties: {
-        dataset_id: { type: "string", description: "Dataset ID from search results" },
-      },
-      required: ["dataset_id"],
-    },
-  },
-  {
-    name: "list_dataset_resources",
-    description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).",
-    input_schema: {
-      type: "object",
-      properties: {
-        dataset_id: { type: "string" },
-        page_size: { type: "integer" },
-      },
-      required: ["dataset_id"],
-    },
-  },
-  {
-    name: "get_resource_info",
-    description: "Get details about a specific resource file including format, size, URL, schema.",
-    input_schema: {
-      type: "object",
-      properties: {
-        dataset_id: { type: "string" },
-        resource_id: { type: "string" },
-      },
-      required: ["dataset_id", "resource_id"],
-    },
-  },
-  {
-    name: "query_resource_data",
-    description: "Query tabular data (CSV/XLS) from a resource. Use for exploring actual data values.",
-    input_schema: {
-      type: "object",
-      properties: {
-        resource_id: { type: "string" },
-        limit: { type: "integer" },
-      },
-      required: ["resource_id"],
-    },
-  },
-  {
-    name: "get_dataservice_info",
-    description: "Get details about a specific API data service.",
-    input_schema: {
-      type: "object",
-      properties: {
-        dataservice_id: { type: "string" },
-      },
-      required: ["dataservice_id"],
-    },
-  },
-  {
-    name: "get_metrics",
-    description: "Get overall portal statistics (total datasets, organizations, reuses counts).",
-    input_schema: { type: "object", properties: {}, required: [] },
-  },
+  { name: "search_datasets", description: "Search for datasets on data.gouv.fr. IMPORTANT: data.gouv.fr is a French portal — the query MUST be in French (e.g., use 'population Paris' not '파리 인구', 'immobilier' not '부동산'). Try multiple French keyword variations for best results.", input_schema: { type: "object", properties: { query: { type: "string", description: "Search keywords in FRENCH only" }, page_size: { type: "integer", description: "Number of results (default 5, max 20)" } }, required: ["query"] } },
+  { name: "search_dataservices", description: "Search for data services (APIs) on data.gouv.fr. IMPORTANT: query MUST be in French.", input_schema: { type: "object", properties: { query: { type: "string", description: "Search keywords in FRENCH only" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "search_organizations", description: "Search for organizations (publishers) on data.gouv.fr. IMPORTANT: query MUST be in French. Use to find which ministries or agencies publish relevant data.", input_schema: { type: "object", properties: { query: { type: "string", description: "Organization name or type in FRENCH (e.g., 'ministère', 'INSEE', 'météo')" }, page_size: { type: "integer" } }, required: ["query"] } },
+  { name: "get_dataset_info", description: "Get detailed information about a specific dataset including all its resources.", input_schema: { type: "object", properties: { dataset_id: { type: "string", description: "Dataset ID from search results" } }, required: ["dataset_id"] } },
+  { name: "list_dataset_resources", description: "List all resource files in a dataset (CSV, JSON, XLS files with download URLs).", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, page_size: { type: "integer" } }, required: ["dataset_id"] } },
+  { name: "get_resource_info", description: "Get details about a specific resource file including format, size, URL, schema.", input_schema: { type: "object", properties: { dataset_id: { type: "string" }, resource_id: { type: "string" } }, required: ["dataset_id", "resource_id"] } },
+  { name: "query_resource_data", description: "Query tabular data (CSV/XLS) from a resource. Use for exploring actual data values.", input_schema: { type: "object", properties: { resource_id: { type: "string" }, limit: { type: "integer" } }, required: ["resource_id"] } },
+  { name: "get_dataservice_info", description: "Get details about a specific API data service.", input_schema: { type: "object", properties: { dataservice_id: { type: "string" } }, required: ["dataservice_id"] } },
+  { name: "get_metrics", description: "Get overall portal statistics and dataset counts.", input_schema: { type: "object", properties: {}, required: [] } },
 ];
 
 router.get("/mcp/tools", (_req, res) => {
@@ -397,13 +332,24 @@ router.post("/mcp/search", mcpRateLimit, async (req, res): Promise<void> => {
 
 CRITICAL RULE: data.gouv.fr is entirely in French. All dataset titles, descriptions, and search indices are in French. You MUST always search using French keywords — never Korean or English.
 
+## Available tools (use ALL that are relevant):
+1. search_datasets — find datasets by French keyword (use multiple keyword variations)
+2. search_dataservices — find API services by French keyword
+3. search_organizations — find publisher ministries/agencies by French name
+4. get_dataset_info — get full metadata + resource list for a dataset ID
+5. list_dataset_resources — list downloadable files in a dataset
+6. get_resource_info — get details of a specific file/resource
+7. query_resource_data — preview actual tabular data from a resource
+8. get_dataservice_info — get full details of an API service
+9. get_metrics — get overall portal statistics
+
 ## Workflow — follow these steps in order:
 
 ### Step 1 — PLAN (before any tool call)
-Analyze the user's question and create a search plan:
-- Translate the core concepts into French search terms
-- Prepare 2–4 French keyword variations to try
-- Common translations:
+Analyze the user's question and write a search plan:
+- Translate core concepts into 2–4 French keyword variations
+- Decide which of the 9 tools to use and in what order
+- Common Korean → French translations:
   인구/인구통계 → population, démographie, habitants, recensement
   부동산/주택 → immobilier, logement, foncier, habitat
   교통/이동 → transport, mobilité, trafic, déplacement
@@ -415,14 +361,19 @@ Analyze the user's question and create a search plan:
   농업/식품 → agriculture, alimentation, agroalimentaire
   에너지 → énergie, électricité, consommation
 
-### Step 2 — SEARCH
-Call search_datasets with each French keyword variation. Retrieve at least 2 different searches to broaden coverage.
+### Step 2 — SEARCH BROADLY
+- Call search_datasets with at least 2 different French keyword variations
+- Call search_organizations to find which agencies publish relevant data
+- If the topic involves APIs, also call search_dataservices
 
-### Step 3 — DETAIL
-For the most relevant datasets found, call get_dataset_info to get full metadata and resource list.
+### Step 3 — DRILL DOWN
+- For the top 2–3 most relevant datasets: call get_dataset_info
+- Call list_dataset_resources to see what files are available
+- If a CSV/JSON resource looks useful: call query_resource_data to preview real data
+- For promising API services: call get_dataservice_info
 
 ### Step 4 — ANSWER
-Write a comprehensive response in Korean summarizing what was found, why each dataset is relevant, and how Korean policy makers could use it.`;
+Write a comprehensive response in Korean: what datasets/APIs were found, their quality and coverage, which resources are most useful, and how Korean policy makers could apply them.`;
 
   type AnthropicMessage = Anthropic.Messages.MessageParam;
   const messages: AnthropicMessage[] = [
