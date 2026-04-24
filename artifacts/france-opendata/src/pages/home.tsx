@@ -182,19 +182,37 @@ function deduplicateDatasets(datasets: DatasetCard[]): DatasetCard[] {
   });
 }
 
+function scoreDatasetInContent(title: string, content: string): { count: number; firstPos: number } {
+  const lower = content.toLowerCase();
+  const key = title.toLowerCase().slice(0, 20);
+  if (!key) return { count: 0, firstPos: -1 };
+  let count = 0;
+  let firstPos = -1;
+  let idx = lower.indexOf(key);
+  while (idx !== -1) {
+    count++;
+    if (firstPos === -1) firstPos = idx;
+    idx = lower.indexOf(key, idx + 1);
+  }
+  return { count, firstPos };
+}
+
 function sortDatasetsByContent(
   datasets: DatasetCard[],
   content: string,
 ): DatasetCard[] {
   if (!content) return datasets;
-  const lower = content.toLowerCase();
   return [...datasets].sort((a, b) => {
-    const ia = lower.indexOf(a.title.toLowerCase().slice(0, 20));
-    const ib = lower.indexOf(b.title.toLowerCase().slice(0, 20));
-    if (ia === -1 && ib === -1) return 0;
-    if (ia === -1) return 1;
-    if (ib === -1) return -1;
-    return ia - ib;
+    const sa = scoreDatasetInContent(a.title, content);
+    const sb = scoreDatasetInContent(b.title, content);
+    // 언급 없는 항목은 뒤로
+    if (sa.count === 0 && sb.count === 0) return 0;
+    if (sa.count === 0) return 1;
+    if (sb.count === 0) return -1;
+    // 언급 횟수 많을수록 상위
+    if (sb.count !== sa.count) return sb.count - sa.count;
+    // 동점이면 첫 언급 위치가 앞인 것을 우선
+    return sa.firstPos - sb.firstPos;
   });
 }
 
@@ -1082,11 +1100,11 @@ export default function Home() {
                             href={ds.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`flex items-start gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition-all group ${idx === 0 ? "border-primary/30 bg-primary/5" : ""}`}
+                            className={`flex items-start gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition-all group ${idx === 0 && scoreDatasetInContent(ds.title, mcp.content).count > 0 ? "border-primary/30 bg-primary/5" : ""}`}
                           >
                             <div className="shrink-0 flex flex-col items-center gap-1">
                               <span
-                                className={`text-[10px] font-bold tabular-nums w-5 h-5 flex items-center justify-center rounded-full ${idx === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                                className={`text-[10px] font-bold tabular-nums w-5 h-5 flex items-center justify-center rounded-full ${idx === 0 && scoreDatasetInContent(ds.title, mcp.content).count > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                               >
                                 {idx + 1}
                               </span>
@@ -1096,7 +1114,7 @@ export default function Home() {
                                 <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">
                                   {ds.title}
                                 </p>
-                                {idx === 0 && (
+                                {idx === 0 && scoreDatasetInContent(ds.title, mcp.content).count > 0 && (
                                   <span className="shrink-0 text-[9px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                                     추천
                                   </span>
