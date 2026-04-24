@@ -311,14 +311,11 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-1">
             <Cpu className="h-3.5 w-3.5" />
-            MCP 기반 AI 검색
+            자연어로 Minimax 모델이 MCP를 통해 검색
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
             프랑스 공공데이터 생태계 탐색
           </h1>
-          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-            대한민국 정책결정자를 위한 프랑스 공공데이터 포털 벤치마킹 레퍼런스 도구
-          </p>
 
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto mt-6 relative">
             <div className="relative flex items-center">
