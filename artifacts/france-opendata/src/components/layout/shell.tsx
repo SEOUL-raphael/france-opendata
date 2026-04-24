@@ -13,18 +13,7 @@ export function Shell({ children }: ShellProps) {
       <main className="flex-1 flex flex-col w-full">{children}</main>
       <footer className="border-t bg-muted/20 py-4 px-6 mt-auto">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <p>
-            데이터 출처:{" "}
-            <a
-              href="https://www.data.gouv.fr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground underline underline-offset-2 transition-colors"
-            >
-              data.gouv.fr
-            </a>{" "}
-          
-          </p>
+
           <div className="flex items-center gap-5">
             <a
               href="https://github.com/etalab/data.gouv.fr"
