@@ -119,9 +119,7 @@ function mcpToolToAnthropic(tool: Tool): Anthropic.Messages.Tool {
     name: tool.name,
     description: tool.description ?? "",
     input_schema: (tool.inputSchema as Anthropic.Messages.Tool["input_schema"]) ?? {
-      type: "object",
-      properties: {},
-      required: [],
+      type: "object", properties: {}, required: [],
     },
   };
 }
@@ -137,7 +135,6 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
     apiKey: process.env.MINIMAX_API_KEY,
   });
 
-  // Attempt to connect to MiniMax MCP server for additional tools
   let minimaxMcpTools: Tool[] = [];
   let minimaxMcpClose: (() => Promise<void>) | null = null;
   let minimaxMcpCallTool: ((name: string, args: Record<string, unknown>) => Promise<string>) | null = null;
@@ -174,64 +171,64 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
       if (signal?.aborted) break;
       loops++;
 
-      // Non-streaming call following MiniMax docs pattern
-      const response = await minimax.messages.create({
+      // Stream for real-time thinking/text display
+      const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
-        max_tokens: 5000,
+        max_tokens: 10000,
         system: SYSTEM_PROMPT,
         tools: allTools,
         tool_choice: { type: "auto" },
         messages,
       });
 
-      totalInputTokens += response.usage?.input_tokens ?? 0;
-      totalOutputTokens += response.usage?.output_tokens ?? 0;
-      send("usage", { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
-
-      // Process all content blocks from the response
-      const toolUseBlocks: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
-      let hasTextContent = false;
-
-      for (const block of response.content) {
-        if (block.type === "thinking") {
-          send("thinking_start", {});
-          send("thinking_delta", { content: block.thinking });
-          send("thinking_stop", {});
-        } else if (block.type === "tool_use") {
-          toolUseBlocks.push({
-            id: block.id,
-            name: block.name,
-            input: block.input as Record<string, unknown>,
-          });
-        } else if (block.type === "text") {
-          if (!hasTextContent) {
-            send("status", { step: "writing", message: "답변 작성 중..." });
-          }
-          hasTextContent = true;
-          send("content", { content: block.text });
+      for await (const event of stream) {
+        if (signal?.aborted) break;
+        if (event.type === "content_block_start") {
+          const block = event.content_block as { type: string; id?: string; name?: string };
+          if (block.type === "thinking") send("thinking_start", {});
+          else if (block.type === "tool_use") send("thinking_stop", {});
+          else if (block.type === "text") send("status", { step: "writing", message: "답변 작성 중..." });
+        } else if (event.type === "content_block_delta") {
+          const delta = event.delta as { type: string; thinking?: string; partial_json?: string; text?: string };
+          if (delta.type === "thinking_delta" && delta.thinking) send("thinking_delta", { content: delta.thinking });
+          else if (delta.type === "text_delta" && delta.text) send("content", { content: delta.text });
         }
       }
 
-      // end_turn: final answer has been emitted
-      if (response.stop_reason === "end_turn") break;
+      const message = await stream.finalMessage();
 
-      // tool_use: execute tools and continue the agentic loop
-      if (response.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
-        // ⚠️ Append full response.content (thinking + tool_use blocks) to preserve reasoning chain
-        messages.push({ role: "assistant", content: response.content });
+      totalInputTokens += message.usage?.input_tokens ?? 0;
+      totalOutputTokens += message.usage?.output_tokens ?? 0;
+      send("usage", { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+
+      // Process final content blocks — thinking / text / tool_use
+      const toolUseBlocks: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
+      let hasTextContent = false;
+
+      for (const block of message.content) {
+        if (block.type === "thinking") {
+          // already streamed above
+        } else if (block.type === "text") {
+          hasTextContent = true;
+        } else if (block.type === "tool_use") {
+          toolUseBlocks.push({ id: block.id, name: block.name, input: block.input as Record<string, unknown> });
+        }
+      }
+
+      if (message.stop_reason === "end_turn") break;
+
+      if (message.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
+        // Append full content (thinking + tool_use) to preserve reasoning chain
+        messages.push({ role: "assistant", content: message.content });
 
         const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
-
         for (const tool of toolUseBlocks) {
           toolCallCount++;
           send("tool_call", { name: tool.name, args: tool.input, callCount: toolCallCount });
 
-          let result: string;
-          if (minimaxMcpToolNames.has(tool.name) && minimaxMcpCallTool) {
-            result = await minimaxMcpCallTool(tool.name, tool.input);
-          } else {
-            result = await callMcpTool(tool.name, tool.input);
-          }
+          const result = minimaxMcpToolNames.has(tool.name) && minimaxMcpCallTool
+            ? await minimaxMcpCallTool(tool.name, tool.input)
+            : await callMcpTool(tool.name, tool.input);
 
           let parsedResult: unknown = result;
           try { parsedResult = JSON.parse(result); } catch { /* keep string */ }
@@ -245,17 +242,14 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
         continue;
       }
 
-      // Fallback: prompt for final answer if no text was produced
       if (!hasTextContent) {
-        messages.push({ role: "assistant", content: response.content });
+        messages.push({ role: "assistant", content: message.content });
         messages.push({ role: "user", content: "지금까지 수집한 정보를 바탕으로 한국어로 분석 결과를 작성해주세요." });
       } else {
         break;
       }
     }
   } finally {
-    if (minimaxMcpClose) {
-      await minimaxMcpClose().catch(() => {/* ignore cleanup errors */});
-    }
+    if (minimaxMcpClose) await minimaxMcpClose().catch(() => {});
   }
 }

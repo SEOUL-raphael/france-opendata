@@ -408,54 +408,55 @@ Please output the response in Korean.`;
 
     send("status", { step: "searching", message: "MiniMax M2.7 추론 및 데이터 수집 중..." });
 
-    // Agentic loop following MiniMax docs: messages.create → process blocks → tool execution
+    // Agentic loop: stream for real-time display, then process final content blocks
     while (loops < MAX_LOOPS) {
       loops++;
 
-      // Non-streaming call per MiniMax documentation pattern
-      const response = await minimax.messages.create({
+      const stream = minimax.messages.stream({
         model: MINIMAX_MODEL,
-        max_tokens: 5000,
+        max_tokens: 10000,
         system: systemPrompt,
         tools: ANTHROPIC_TOOLS,
         tool_choice: { type: "auto" },
         messages,
       });
 
-      // Process all content blocks from the response
-      const toolUseBlocks: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
-      let hasTextContent = false;
-
-      for (const block of response.content) {
-        if (block.type === "thinking") {
-          // Emit interleaved thinking block
-          send("thinking_start", {});
-          send("thinking_delta", { content: block.thinking });
-          send("thinking_stop", {});
-        } else if (block.type === "tool_use") {
-          toolUseBlocks.push({
-            id: block.id,
-            name: block.name,
-            input: block.input as Record<string, unknown>,
-          });
-        } else if (block.type === "text") {
-          if (!hasTextContent) {
-            send("status", { step: "writing", message: "답변 작성 중..." });
-          }
-          hasTextContent = true;
-          send("content", { content: block.text });
+      for await (const event of stream) {
+        if (event.type === "content_block_start") {
+          const block = event.content_block as { type: string; id?: string; name?: string };
+          if (block.type === "thinking") send("thinking_start", {});
+          else if (block.type === "tool_use") send("thinking_stop", {});
+          else if (block.type === "text") send("status", { step: "writing", message: "답변 작성 중..." });
+        } else if (event.type === "content_block_delta") {
+          const delta = event.delta as { type: string; thinking?: string; text?: string };
+          if (delta.type === "thinking_delta" && delta.thinking) send("thinking_delta", { content: delta.thinking });
+          else if (delta.type === "text_delta" && delta.text) send("content", { content: delta.text });
         }
       }
 
-      // end_turn: final answer emitted
-      if (response.stop_reason === "end_turn") break;
+      const message = await stream.finalMessage();
 
-      if (response.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
-        // ⚠️ Append full response.content (thinking + tool_use blocks) to preserve reasoning chain
-        messages.push({ role: "assistant", content: response.content });
+      // Process final content blocks — thinking / text / tool_use
+      const toolUseBlocks: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
+      let hasTextContent = false;
+
+      for (const block of message.content) {
+        if (block.type === "thinking") {
+          // already streamed above
+        } else if (block.type === "text") {
+          hasTextContent = true;
+        } else if (block.type === "tool_use") {
+          toolUseBlocks.push({ id: block.id, name: block.name, input: block.input as Record<string, unknown> });
+        }
+      }
+
+      if (message.stop_reason === "end_turn") break;
+
+      if (message.stop_reason === "tool_use" && toolUseBlocks.length > 0) {
+        // Append full content (thinking + tool_use) to preserve reasoning chain
+        messages.push({ role: "assistant", content: message.content });
 
         const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
-
         for (const tool of toolUseBlocks) {
           toolCallCount++;
           send("tool_call", { name: tool.name, args: tool.input, callCount: toolCallCount });
@@ -474,9 +475,8 @@ Please output the response in Korean.`;
         continue;
       }
 
-      // Fallback: prompt for final answer if no text was produced
       if (!hasTextContent) {
-        messages.push({ role: "assistant", content: response.content });
+        messages.push({ role: "assistant", content: message.content });
         messages.push({ role: "user", content: "지금까지 수집한 정보를 바탕으로 한국어로 분석 결과를 작성해주세요." });
       } else {
         break;
