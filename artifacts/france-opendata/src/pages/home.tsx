@@ -274,8 +274,8 @@ function StatusDot({ ok }: { ok: boolean | null }) {
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const [showThinking, setShowThinking] = useState(false);
-  const [expandedToolCalls, setExpandedToolCalls] = useState<number[]>([]);
+  const [showThinking, setShowThinking] = useState(true);
+  const [collapsedToolCalls, setCollapsedToolCalls] = useState<number[]>([]);
   const { state: mcp, search, reset } = useMcpSearch();
   const { data: stats, isLoading: statsLoading } = usePortalStats();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -315,16 +315,20 @@ export default function Home() {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
+    setCollapsedToolCalls([]);
+    setShowThinking(true);
     search(q);
   };
 
   const handleExample = (label: string) => {
     setQuery(label);
+    setCollapsedToolCalls([]);
+    setShowThinking(true);
     search(label);
   };
 
   const toggleToolCall = (i: number) => {
-    setExpandedToolCalls((prev) => prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]);
+    setCollapsedToolCalls((prev) => prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]);
   };
 
   return (
@@ -599,12 +603,12 @@ export default function Home() {
                             ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                             : <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
                           }
-                          {expandedToolCalls.includes(i)
+                          {!collapsedToolCalls.includes(i)
                             ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           }
                         </button>
-                        {expandedToolCalls.includes(i) && tc.result && (
+                        {!collapsedToolCalls.includes(i) && tc.result && (
                           <div className="border-t px-3 py-2 bg-muted/20">
                             <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap">
                               {typeof tc.result === "string"
