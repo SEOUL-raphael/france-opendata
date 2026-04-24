@@ -383,23 +383,26 @@ export default function Home() {
           ) : stats ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
               {[
-                { icon: Database, label: "데이터셋", value: stats.metrics?.datasets },
-                { icon: Building2, label: "조직", value: stats.metrics?.organizations },
-                { icon: Layers, label: "API 서비스", value: stats.metrics?.dataservices },
-                { icon: Repeat, label: "활용 사례", value: stats.metrics?.reuses },
-              ].map(({ icon: Icon, label, value }) => (
-                <div
+                { icon: Database, label: "데이터셋", value: stats.metrics?.datasets, href: "https://www.data.gouv.fr/fr/datasets/" },
+                { icon: Building2, label: "조직", value: stats.metrics?.organizations, href: "https://www.data.gouv.fr/fr/organizations/" },
+                { icon: Layers, label: "API 서비스", value: stats.metrics?.dataservices, href: "https://www.data.gouv.fr/fr/dataservices/" },
+                { icon: Repeat, label: "활용 사례", value: stats.metrics?.reuses, href: "https://www.data.gouv.fr/fr/reuses/" },
+              ].map(({ icon: Icon, label, value, href }) => (
+                <a
                   key={label}
-                  className="p-3 rounded-lg bg-background shadow-sm border border-border/50"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 rounded-lg bg-background shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-md transition-all group"
                 >
-                  <div className="flex items-center justify-center gap-1.5 text-primary mb-1">
+                  <div className="flex items-center justify-center gap-1.5 text-primary mb-1 group-hover:text-primary/80">
                     <Icon className="h-4 w-4" />
                     <span className="font-medium text-xs">{label}</span>
                   </div>
                   <div className="text-xl font-bold">
                     {value?.toLocaleString() ?? "—"}
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           ) : null}
