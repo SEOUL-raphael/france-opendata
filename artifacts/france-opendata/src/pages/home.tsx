@@ -159,6 +159,19 @@ function deduplicateDatasets(datasets: DatasetCard[]): DatasetCard[] {
   });
 }
 
+function sortDatasetsByContent(datasets: DatasetCard[], content: string): DatasetCard[] {
+  if (!content) return datasets;
+  const lower = content.toLowerCase();
+  return [...datasets].sort((a, b) => {
+    const ia = lower.indexOf(a.title.toLowerCase().slice(0, 20));
+    const ib = lower.indexOf(b.title.toLowerCase().slice(0, 20));
+    if (ia === -1 && ib === -1) return 0;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+}
+
 const INITIAL_MCP_STATE: McpSearchState = {
   status: "idle",
   statusMessage: "",
@@ -234,7 +247,12 @@ function useMcpSearch() {
         content: prev.content + ((data.content as string) ?? ""),
       }));
     } else if (event === "done") {
-      setState((prev) => ({ ...prev, status: "done", statusMessage: "분석 완료" }));
+      setState((prev) => ({
+        ...prev,
+        status: "done",
+        statusMessage: "분석 완료",
+        datasets: sortDatasetsByContent(prev.datasets, prev.content),
+      }));
     } else if (event === "error") {
       setState((prev) => ({
         ...prev,
