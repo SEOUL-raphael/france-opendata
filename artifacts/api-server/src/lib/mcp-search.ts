@@ -141,7 +141,7 @@ export async function runMcpSearch(query: string, send: SendFn, signal?: AbortSi
     // On the last loop, remove tools to force a final text answer
     const stream = minimax.messages.stream({
       model: MINIMAX_MODEL,
-      max_tokens: 6000,
+      max_tokens: 20000,
       system: SYSTEM_PROMPT,
       tools: loops < MAX_LOOPS ? ANTHROPIC_TOOLS : undefined,
       tool_choice: loops < MAX_LOOPS ? { type: "auto" } : undefined,
