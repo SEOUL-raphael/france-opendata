@@ -48,7 +48,7 @@ app.use(
   }),
 );
 app.use("/api/chat", cors(restrictedCors));
-app.use(cors());
+app.use(/^(?!\/api\/chat).*$/, cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

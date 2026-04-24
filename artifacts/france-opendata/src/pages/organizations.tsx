@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useSearchOrganizations } from "@/hooks/use-datagouv";
+import type { DGOrganization } from "@/types/datagouv";
 
 export default function Organizations() {
   const [query, setQuery] = useState("");
@@ -56,7 +57,7 @@ export default function Organizations() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {searchResults?.data?.map((org: any) => (
+          {searchResults?.data?.map((org: DGOrganization) => (
             <Card key={org.id} className="hover:shadow-md transition-shadow flex flex-col">
               <CardHeader className="flex flex-row items-start gap-4 pb-3">
                 <div className="w-16 h-16 shrink-0 rounded border bg-white flex items-center justify-center overflow-hidden">
