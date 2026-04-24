@@ -425,8 +425,8 @@ Please output the response in Korean.`;
         if (event.type === "content_block_start") {
           const block = event.content_block as { type: string; id?: string; name?: string };
           if (block.type === "thinking") send("thinking_start", {});
-          else if (block.type === "tool_use") send("thinking_stop", {});
-          else if (block.type === "text") send("status", { step: "writing", message: "답변 작성 중..." });
+          else if (block.type === "tool_use") { send("thinking_stop", {}); }
+          else if (block.type === "text") { send("thinking_stop", {}); send("status", { step: "writing", message: "답변 작성 중..." }); }
         } else if (event.type === "content_block_delta") {
           const delta = event.delta as { type: string; thinking?: string; text?: string };
           if (delta.type === "thinking_delta" && delta.thinking) send("thinking_delta", { content: delta.thinking });
