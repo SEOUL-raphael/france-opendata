@@ -30,28 +30,28 @@ const USE_CASES = [
     original: "La prise d'appel des secours",
     description:
       "소방·응급 신고 센터에서 전국 주소 데이터베이스(BAN)를 활용해 출동 위치를 정확히 특정합니다. 주소 오류로 인한 골든타임 손실을 최소화해 구조 성공률을 높입니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/prise_d_appel_des_secours",
+    url: "https://www.data.gouv.fr/pages/onboarding/prise_appel_secours",
   },
   {
     name: "도시 수목 유산 파악",
     original: "Nos Villes Vertes",
     description:
       "지자체가 공개한 수목 데이터를 활용해 시민이 자신의 지역 나무 종류·나이·위치를 지도로 확인합니다. 도시 녹지 정책 수립과 탄소 흡수량 산정에 활용됩니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/nos-villes-vertes",
+    url: "https://www.data.gouv.fr/pages/onboarding/nos_villes_vertes",
   },
   {
     name: "경영 위기 기업 조기 탐지",
     original: "Signaux Faibles",
     description:
       "SIRENE(기업등록) 데이터, 세금 납부 현황, 고용보험 정보를 결합해 경영 위기에 처한 기업을 사전 탐지합니다. 공무원이 선제적으로 지원책을 제안할 수 있게 합니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/signaux-faibles",
+    url: "https://www.data.gouv.fr/pages/onboarding/signaux_faibles",
   },
   {
     name: "부동산 실거래가 공개",
     original: "Données de valeur foncière (DVF)",
     description:
       "프랑스 전역의 부동산 실거래 가격 데이터를 누구나 자유롭게 조회·분석할 수 있도록 공개합니다. 시민·전문가·연구자 모두 지역별·유형별 실거래가를 직접 확인할 수 있습니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/dvf",
+    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
   },
   {
     name: "농업 경영 간소화",
@@ -86,21 +86,21 @@ const USE_CASES = [
     original: "EnR de réseaux en Pays de la Loire",
     description:
       "페이드라루아르 지역의 재생에너지 네트워크 연결 현황과 생산량을 지도로 시각화합니다. 지자체와 에너지 담당 기관이 지역 에너지 전환 계획 수립에 활용합니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/enr-pays-de-la-loire",
+    url: "https://www.data.gouv.fr/pages/onboarding/EnR_PdlL",
   },
   {
     name: "기업 정보 통합 검색",
     original: "Annuaire des Entreprises",
     description:
       "SIRENE 기반 기업 정보 검색 포털입니다. 사업자 등록번호(SIRET/SIREN)로 기업의 업종·규모·법적 형태·대표자를 즉시 확인할 수 있어 행정 절차를 크게 단축합니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/annuaire-des-entreprises",
+    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
   },
   {
     name: "주유소 유가 추이 분석",
     original: "Exploration des prix du carburant",
     description:
       "프랑스 전국 1만여 개 주유소의 실시간 유가를 공개합니다. 소비자 앱·지도 서비스·언론 등 수백 개 서비스가 이 데이터를 재활용해 가격 비교 서비스를 제공합니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/exploration-prix-carburant",
+    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
   },
   {
     name: "대입 진학 경로 분석",
@@ -114,14 +114,14 @@ const USE_CASES = [
     original: "Aux Alentours par MAIF",
     description:
       "MAIF 보험이 공공데이터를 활용해 특정 장소 주변의 학교·의료시설·대중교통·재해 위험 등 생활 환경 정보를 한눈에 제공하는 서비스입니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/aux-alentours",
+    url: "https://www.data.gouv.fr/pages/onboarding/aux-alentours-par-maif",
   },
   {
     name: "근처 위험 정보 확인",
     original: "VigiFrance",
     description:
       "기상 위험·홍수·지진·산불 등 여러 부처의 경보 데이터를 통합해 사용자 위치 기반으로 근처 위험을 실시간으로 알려주는 앱입니다.",
-    url: "https://www.data.gouv.fr/pages/onboarding/vigifrance",
+    url: "https://www.data.gouv.fr/pages/onboarding/liste_cas_usage",
   },
 ];
 
