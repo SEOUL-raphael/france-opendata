@@ -1,13 +1,22 @@
 import { Router, type IRouter } from "express";
 import axios from "axios";
+import { rateLimit } from "express-rate-limit";
 import { SendChatMessageBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
+const chatRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도하세요." },
+});
+
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
 const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
-router.post("/chat/message", async (req, res): Promise<void> => {
+router.post("/chat/message", chatRateLimit, async (req, res): Promise<void> => {
   const parsed = SendChatMessageBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

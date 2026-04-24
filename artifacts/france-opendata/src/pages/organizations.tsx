@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Search, Building2, ExternalLink, Loader2, Database, Users } from "lucide-react";
+import { Search, Building2, Loader2, HardDrive, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useSearchOrganizations } from "@/hooks/use-datagouv";
 
 export default function Organizations() {
@@ -86,7 +85,7 @@ export default function Organizations() {
               <CardFooter className="pt-0 flex justify-between items-center bg-muted/10 border-t p-4 mt-auto">
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5" title="데이터셋 수">
-                    <Database className="h-4 w-4" />
+                    <HardDrive className="h-4 w-4" />
                     <span className="font-medium">{org.metrics?.datasets || 0}</span>
                   </div>
                   <div className="flex items-center gap-1.5" title="팔로워 수">
@@ -95,9 +94,9 @@ export default function Organizations() {
                   </div>
                 </div>
                 <Button variant="outline" size="sm" asChild>
-                  <a href={org.page} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
-                    자세히 보기 <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                  <Link href={`/organizations/${org.id}`}>
+                    자세히 보기
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>
