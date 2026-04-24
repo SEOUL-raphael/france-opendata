@@ -23,7 +23,7 @@ export function Shell({ children }: ShellProps) {
             >
               data.gouv.fr
             </a>{" "}
-            · 대한민국 정책결정자를 위한 프랑스 공공데이터 벤치마킹 도구
+          
           </p>
           <div className="flex items-center gap-5">
             <a
