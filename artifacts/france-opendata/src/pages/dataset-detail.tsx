@@ -1,12 +1,13 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { useGetDataset } from "@/hooks/use-datagouv";
 import type { DGResource } from "@/types/datagouv";
-import { Loader2, Building2, Calendar, FileText, Download, Shield, Eye, Repeat, Users, FileJson, FileIcon, FileSpreadsheet, Bot, HardDrive } from "lucide-react";
+import { Loader2, Building2, Calendar, FileText, Download, Shield, Eye, Repeat, Users, FileJson, FileIcon, FileSpreadsheet, Bot, HardDrive, Lightbulb, BookOpen, Database, AlertCircle, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useChatContext } from "@/contexts/chat-context";
+import { useSendChatMessage } from "@workspace/api-client-react";
 
 const getFormatColor = (format: string | null) => {
   const f = (format ?? "").toLowerCase();
@@ -33,12 +34,162 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+interface AnalysisResult {
+  summary: string;
+  policyUse: string;
+  koreaDataset: string;
+}
+
+function isValidAnalysisResult(obj: unknown): obj is AnalysisResult {
+  if (!obj || typeof obj !== "object") return false;
+  const r = obj as Record<string, unknown>;
+  return typeof r.summary === "string" && r.summary.length > 0
+    && typeof r.policyUse === "string"
+    && typeof r.koreaDataset === "string";
+}
+
+function tryParseJson(text: string): AnalysisResult | null {
+  try {
+    const parsed = JSON.parse(text);
+    if (isValidAnalysisResult(parsed)) return parsed;
+  } catch {
+  }
+  return null;
+}
+
+function parseAnalysisResult(content: string): AnalysisResult {
+  const fenceMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+  if (fenceMatch?.[1]) {
+    const result = tryParseJson(fenceMatch[1].trim());
+    if (result) return result;
+  }
+
+  const firstBrace = content.indexOf("{");
+  const lastBrace = content.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const result = tryParseJson(content.slice(firstBrace, lastBrace + 1));
+    if (result) return result;
+  }
+
+  const summaryMatch = content.match(/##?\s*(?:1\.|①)?\s*한국어\s*요약[^\n]*\n([\s\S]*?)(?=##?\s*(?:2\.|②)|$)/i);
+  const policyMatch = content.match(/##?\s*(?:2\.|②)?\s*(?:한국\s*)?정책[^\n]*활용[^\n]*\n([\s\S]*?)(?=##?\s*(?:3\.|③)|$)/i);
+  const koreaMatch = content.match(/##?\s*(?:3\.|③)?\s*data\.go\.kr[^\n]*\n([\s\S]*?)(?=##?\s*(?:4\.)|$)/i);
+
+  if (summaryMatch || policyMatch || koreaMatch) {
+    return {
+      summary: summaryMatch?.[1]?.trim() ?? content,
+      policyUse: policyMatch?.[1]?.trim() ?? "",
+      koreaDataset: koreaMatch?.[1]?.trim() ?? "",
+    };
+  }
+
+  return {
+    summary: content,
+    policyUse: "",
+    koreaDataset: "",
+  };
+}
+
+function AnalysisCards({ result }: { result: AnalysisResult }) {
+  return (
+    <div className="mt-6 space-y-4">
+      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+        <CardHeader className="pb-3 pt-4 px-4">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <BookOpen className="h-4 w-4" />
+            한국어 요약
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{result.summary}</p>
+        </CardContent>
+      </Card>
+
+      {result.policyUse && (
+        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
+          <CardHeader className="pb-3 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-300">
+              <Lightbulb className="h-4 w-4" />
+              한국 정책 활용 방안
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{result.policyUse}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.koreaDataset && (
+        <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20">
+          <CardHeader className="pb-3 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+              <Database className="h-4 w-4" />
+              data.go.kr 대응 데이터셋
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{result.koreaDataset}</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function DatasetDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id || "";
-  const { openChat } = useChatContext();
 
   const { data: dataset, isLoading, isError } = useGetDataset(id);
+  const analysisMutation = useSendChatMessage();
+
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  const handleAnalyze = () => {
+    if (!dataset || analysisMutation.isPending) return;
+    setAnalysisResult(null);
+    setAnalysisError(null);
+
+    const resourceFormats = dataset.resources?.map((r: DGResource) => r.format).filter(Boolean).join(", ") || "정보 없음";
+    const resourceCount = dataset.resources?.length ?? 0;
+
+    const prompt = `다음 프랑스 공공데이터셋을 분석하여 정확히 아래 JSON 형식으로만 응답해주세요. 마크다운 코드 블록 없이 순수 JSON만 반환하세요.
+
+데이터셋 정보:
+- 제목: ${dataset.title}
+- 설명: ${dataset.description?.slice(0, 500) || "없음"}
+- 제공 기관: ${dataset.organization?.name || "미상"}
+- 라이선스: ${dataset.license || "미지정"}
+- 업데이트 주기: ${dataset.frequency || "미정"}
+- 리소스 수: ${resourceCount}개 (형식: ${resourceFormats})
+- 태그: ${dataset.tags?.slice(0, 10).join(", ") || "없음"}
+
+요청 형식:
+{
+  "summary": "데이터셋의 핵심 내용, 수록 데이터 범위, 특징을 3~5문장으로 한국어로 요약",
+  "policyUse": "한국 정부 및 지자체에서 이 데이터를 어떻게 활용할 수 있는지 구체적인 정책 사례와 함께 3~5문장으로 설명",
+  "koreaDataset": "data.go.kr에서 이와 유사하거나 대응되는 데이터셋의 이름, 특징, 프랑스 데이터셋과의 차이점을 3~5문장으로 설명"
+}`;
+
+    analysisMutation.mutate(
+      {
+        data: {
+          messages: [{ role: "user", content: prompt }],
+          context: `Dataset analysis request for: ${dataset.title} (id: ${id})`,
+        },
+      },
+      {
+        onSuccess: (response) => {
+          const parsed = parseAnalysisResult(response.content);
+          setAnalysisResult(parsed);
+        },
+        onError: () => {
+          setAnalysisError("분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        },
+      }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -73,6 +224,63 @@ export default function DatasetDetail() {
             <div className="bg-muted/30 p-6 rounded-lg border border-border/50 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
               {dataset.description || "설명이 제공되지 않았습니다."}
             </div>
+          </div>
+
+          {/* AI Analysis Section - inline in main content */}
+          <div>
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" /> AI 분석
+            </h2>
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-6">
+                <p className="text-sm text-muted-foreground mb-4">
+                  클릭 한 번으로 이 데이터셋의 한국어 요약, 한국 정책 활용 방안, data.go.kr 대응 데이터셋을 확인하세요.
+                </p>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={handleAnalyze}
+                  disabled={analysisMutation.isPending}
+                >
+                  {analysisMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      AI 분석 중...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      AI로 분석하기
+                    </>
+                  )}
+                </Button>
+
+                {analysisMutation.isPending && (
+                  <div className="mt-6 space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="rounded-lg border p-4 animate-pulse">
+                        <div className="h-4 bg-muted rounded w-1/3 mb-3" />
+                        <div className="space-y-2">
+                          <div className="h-3 bg-muted rounded w-full" />
+                          <div className="h-3 bg-muted rounded w-5/6" />
+                          <div className="h-3 bg-muted rounded w-4/6" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {analysisError && (
+                  <div className="mt-4 flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {analysisError}
+                  </div>
+                )}
+
+                {analysisResult && !analysisMutation.isPending && (
+                  <AnalysisCards result={analysisResult} />
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <div>
@@ -163,22 +371,6 @@ export default function DatasetDetail() {
                 <div className="flex items-center gap-1.5" title="팔로워"><Users className="h-4 w-4" /> {dataset.metrics?.followers || 0}</div>
                 <div className="flex items-center gap-1.5" title="활용 사례"><FileText className="h-4 w-4" /> {dataset.metrics?.reuses || 0}</div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-6">
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" /> AI 분석
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                이 데이터셋의 구조, 활용 가능성, 한국 정책과의 비교 분석을 AI에게 물어보세요.
-              </p>
-              <Button className="w-full" onClick={() => openChat(
-                `이 데이터셋을 분석해주세요: "${dataset.title}". 주요 내용, 활용 가능성, 한국 정책에서의 시사점을 한국어로 설명해주세요.`
-              )}>
-                AI로 분석하기
-              </Button>
             </CardContent>
           </Card>
         </div>

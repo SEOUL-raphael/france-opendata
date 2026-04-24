@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,45 +29,48 @@ export function AIChat() {
     }
   }, [messages, chatMutation.isPending]);
 
+  const handleSend = useCallback(
+    (overrideInput?: string) => {
+      const text = (overrideInput ?? input).trim();
+      if (!text || chatMutation.isPending) return;
+
+      const userMsg: ChatMessage = { role: "user", content: text };
+      const newMessages = [...messages, userMsg];
+      setMessages(newMessages);
+      setInput("");
+
+      chatMutation.mutate(
+        {
+          data: {
+            messages: newMessages,
+            context: `Current page context: ${location}`,
+          },
+        },
+        {
+          onSuccess: (response) => {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: response.content },
+            ]);
+          },
+          onError: () => {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: "오류가 발생했습니다. 다시 시도해주세요." },
+            ]);
+          },
+        }
+      );
+    },
+    [input, messages, location, chatMutation]
+  );
+
   useEffect(() => {
     if (initialMessage && isOpen) {
-      setInput(initialMessage);
       clearInitialMessage();
+      handleSend(initialMessage);
     }
-  }, [initialMessage, isOpen, clearInitialMessage]);
-
-  const handleSend = (overrideInput?: string) => {
-    const text = (overrideInput ?? input).trim();
-    if (!text || chatMutation.isPending) return;
-
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    setInput("");
-
-    chatMutation.mutate(
-      {
-        data: {
-          messages: newMessages,
-          context: `Current page context: ${location}`,
-        },
-      },
-      {
-        onSuccess: (response) => {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: response.content },
-          ]);
-        },
-        onError: () => {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: "오류가 발생했습니다. 다시 시도해주세요." },
-          ]);
-        },
-      }
-    );
-  };
+  }, [initialMessage, isOpen, clearInitialMessage, handleSend]);
 
   return (
     <>
