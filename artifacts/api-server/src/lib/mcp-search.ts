@@ -53,8 +53,8 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
           timeout: 10000,
         });
         return JSON.stringify(
-          (r.data?.data ?? []).map((d: { id: string; title: string; description?: string; organization?: { name: string }; resources?: unknown[]; tags?: string[] }) => ({
-            id: d.id, title: d.title,
+          (r.data?.data ?? []).map((d: { id: string; slug?: string; page?: string; title: string; description?: string; organization?: { name: string }; resources?: unknown[]; tags?: string[] }) => ({
+            id: d.id, slug: d.slug ?? null, page: d.page ?? null, title: d.title,
             description: (d.description ?? "").substring(0, 200),
             organization: d.organization?.name ?? null,
             resources_count: Array.isArray(d.resources) ? d.resources.length : 0,
@@ -69,7 +69,7 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
       case "get_dataset_info": {
         const r = await axios.get(`${DATAGOUV_BASE_URL}/datasets/${args.dataset_id}/`, { timeout: 10000 });
         return JSON.stringify({
-          id: r.data.id, title: r.data.title,
+          id: r.data.id, slug: r.data.slug ?? null, page: r.data.page ?? null, title: r.data.title,
           description: (r.data.description ?? "").substring(0, 500),
           organization: r.data.organization?.name, license: r.data.license,
           resources: (r.data.resources ?? []).slice(0, 10).map((res: { id: string; title: string; format: string; url: string; filesize?: number }) => ({

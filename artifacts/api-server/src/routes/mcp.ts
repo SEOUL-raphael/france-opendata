@@ -163,8 +163,10 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
         });
         const data = r.data?.data ?? [];
         return JSON.stringify(
-          data.map((d: { id: string; title: string; description?: string; organization?: { name: string }; resources?: unknown[]; tags?: string[] }) => ({
+          data.map((d: { id: string; slug?: string; page?: string; title: string; description?: string; organization?: { name: string }; resources?: unknown[]; tags?: string[] }) => ({
             id: d.id,
+            slug: d.slug ?? null,
+            page: d.page ?? null,
             title: d.title,
             description: (d.description ?? "").substring(0, 200),
             organization: d.organization?.name ?? null,
@@ -184,6 +186,8 @@ async function callFallbackApi(name: string, args: Record<string, unknown>): Pro
         const r = await axios.get(`${DATAGOUV_BASE_URL}/datasets/${args.dataset_id}/`, { timeout: 10000 });
         return JSON.stringify({
           id: r.data.id,
+          slug: r.data.slug ?? null,
+          page: r.data.page ?? null,
           title: r.data.title,
           description: (r.data.description ?? "").substring(0, 500),
           organization: r.data.organization?.name,

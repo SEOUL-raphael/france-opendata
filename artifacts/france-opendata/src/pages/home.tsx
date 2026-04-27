@@ -116,6 +116,13 @@ function extractDatasetsFromResult(
     return [];
 
   try {
+    const buildUrl = (d: Record<string, unknown>): string => {
+      if (d.page && typeof d.page === "string" && d.page.startsWith("http"))
+        return d.page;
+      if (d.slug) return `https://www.data.gouv.fr/fr/datasets/${d.slug}/`;
+      return `https://www.data.gouv.fr/fr/datasets/${d.id}/`;
+    };
+
     if (Array.isArray(result)) {
       return (result as Array<Record<string, unknown>>)
         .filter((d) => d.id && d.title)
@@ -123,7 +130,7 @@ function extractDatasetsFromResult(
           id: String(d.id),
           title: String(d.title),
           organization: d.organization ? String(d.organization) : undefined,
-          url: `https://www.data.gouv.fr/datasets/${d.id}`,
+          url: buildUrl(d),
         }));
     }
     if (result && typeof result === "object" && !Array.isArray(result)) {
@@ -134,7 +141,7 @@ function extractDatasetsFromResult(
             id: String(d.id),
             title: String(d.title),
             organization: d.organization ? String(d.organization) : undefined,
-            url: `https://www.data.gouv.fr/datasets/${d.id}`,
+            url: buildUrl(d),
           },
         ];
       }
@@ -147,11 +154,14 @@ function extractDatasetsFromResult(
         if (titleMatch) {
           const title = titleMatch[1].trim();
           let id = "";
+          let slug = "";
           let org = "";
           for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
             const idMatch = lines[j].match(/ID:\s*(\S+)/);
+            const slugMatch = lines[j].match(/Slug:\s*(\S+)/);
             const orgMatch = lines[j].match(/Organization:\s*(.+)$/);
             if (idMatch) id = idMatch[1];
+            if (slugMatch) slug = slugMatch[1];
             if (orgMatch) org = orgMatch[1].trim();
             if (lines[j].trim() === "" && id) break;
           }
@@ -160,7 +170,9 @@ function extractDatasetsFromResult(
               id,
               title,
               organization: org || undefined,
-              url: `https://www.data.gouv.fr/datasets/${id}`,
+              url: slug
+                ? `https://www.data.gouv.fr/fr/datasets/${slug}/`
+                : `https://www.data.gouv.fr/fr/datasets/${id}/`,
             });
           }
         }
