@@ -245,6 +245,82 @@ const INITIAL_MCP_STATE: McpSearchState = {
 const WORKER_URL: string = import.meta.env.VITE_WORKER_URL ?? "";
 const USE_WORKER = Boolean(WORKER_URL);
 
+// Hardcoded tool metadata used on GitHub Pages (no /api/mcp/tools endpoint available).
+const STATIC_MCP_TOOLS: McpToolMeta[] = [
+  {
+    name: "search_datasets",
+    label: "데이터셋 검색",
+    description: "키워드로 data.gouv.fr의 데이터셋을 검색합니다. 제목·설명·태그 기반으로 관련 데이터셋을 수집합니다.",
+    endpoint: "GET /api/1/datasets/",
+    params: ["query", "page_size"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "search_dataservices",
+    label: "API 서비스 검색",
+    description: "공개된 API 서비스(데이터 서비스)를 키워드로 검색합니다.",
+    endpoint: "GET /api/1/dataservices/",
+    params: ["query", "page_size"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "get_dataservice_info",
+    label: "API 서비스 상세 조회",
+    description: "특정 데이터 서비스의 메타데이터, 엔드포인트, 라이선스 정보를 가져옵니다.",
+    endpoint: "GET /api/1/dataservices/{id}/",
+    params: ["dataservice_id"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "query_resource_data",
+    label: "리소스 데이터 직접 조회",
+    description: "테이블형 리소스(CSV·XLS 등)의 실제 데이터를 SQL 스타일로 조회합니다.",
+    endpoint: "GET /api/1/datasets/{dataset_id}/resources/{resource_id}/data/",
+    params: ["resource_id", "limit", "offset"],
+    source: "data.gouv.fr Explore API",
+  },
+  {
+    name: "get_dataset_info",
+    label: "데이터셋 상세 조회",
+    description: "특정 데이터셋의 메타데이터, 리소스 목록, 기관 정보, 라이선스 등을 가져옵니다.",
+    endpoint: "GET /api/1/datasets/{id}/",
+    params: ["dataset_id"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "list_dataset_resources",
+    label: "데이터셋 리소스 목록",
+    description: "데이터셋에 포함된 리소스 파일 목록(CSV·JSON·XLS 등)과 다운로드 URL을 가져옵니다.",
+    endpoint: "GET /api/1/datasets/{id}/resources/",
+    params: ["dataset_id", "page", "page_size"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "get_resource_info",
+    label: "리소스 상세 조회",
+    description: "개별 리소스 파일의 형식·크기·URL·스키마 정보를 가져옵니다.",
+    endpoint: "GET /api/1/datasets/{dataset_id}/resources/{resource_id}/",
+    params: ["dataset_id", "resource_id"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "search_organizations",
+    label: "기관 검색",
+    description: "data.gouv.fr에서 데이터를 공개한 기관을 키워드로 검색합니다.",
+    endpoint: "GET /api/1/organizations/",
+    params: ["query", "page_size"],
+    source: "data.gouv.fr API v1",
+  },
+  {
+    name: "get_metrics",
+    label: "포털 통계 조회",
+    description: "data.gouv.fr 전체 데이터셋·기관·재사용 건수 등 플랫폼 지표를 가져옵니다.",
+    endpoint: "GET /api/1/site/",
+    params: [],
+    source: "data.gouv.fr API v1",
+  },
+];
+
 interface WorkerResponse {
   message: { role: string; content: string };
   toolCalls: Array<{ name: string; arguments: Record<string, unknown>; result: string }>;
@@ -603,11 +679,14 @@ export default function Home() {
   const contentRef = useRef<HTMLDivElement>(null);
   const isActive = mcp.status !== "idle";
 
-  const [mcpTools, setMcpTools] = useState<McpToolMeta[]>([]);
+  const [mcpTools, setMcpTools] = useState<McpToolMeta[]>(
+    USE_WORKER ? STATIC_MCP_TOOLS : []
+  );
   const [mcpHealth, setMcpHealth] = useState<McpHealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
 
   useEffect(() => {
+    if (USE_WORKER) return; // GitHub Pages: use static metadata, no server endpoint
     fetch("/api/mcp/tools")
       .then((r) => r.json())
       .then((d: { tools: McpToolMeta[] }) => setMcpTools(d.tools ?? []))
