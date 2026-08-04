@@ -1,0 +1,1 @@
+- [External deploy topology](external-deploy.md) — frontend lives on GitHub Pages + Cloudflare Worker AI proxy; how to redeploy each and which env vars/secrets drive it.
