@@ -415,7 +415,7 @@ function useMcpSearch() {
     [],
   );
 
-  // ── Worker (GitHub Pages) path ────────────────────────────────────────────
+  // ── Worker (GitHub Pages) path — SSE streaming ───────────────────────────
   const searchViaWorker = useCallback(async (query: string) => {
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -424,7 +424,7 @@ function useMcpSearch() {
     setState({
       ...INITIAL_MCP_STATE,
       status: "searching",
-      statusMessage: "Cloudflare Worker에서 분석 중... (최대 수십 초 소요)",
+      statusMessage: "AI 추론 시작 중...",
     });
 
     try {
@@ -435,48 +435,59 @@ function useMcpSearch() {
         signal: controller.signal,
       });
 
-      const data = (await res.json()) as WorkerResponse;
-
-      if (!res.ok || data.error) {
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({ error: `서버 오류 (${res.status})` }))) as { error?: string };
         setState((prev) => ({
           ...prev,
           status: "error",
-          errorMessage: data.error ?? `서버 오류 (${res.status})`,
+          errorMessage: err.error ?? `서버 오류 (${res.status})`,
         }));
         return;
       }
 
-      // Map tool calls from Worker response
-      let allDatasets: DatasetCard[] = [];
-      const toolCallsMapped: McpToolCall[] = (data.toolCalls ?? []).map(
-        (tc, i) => {
-          let parsedResult: unknown = tc.result;
-          try { parsedResult = JSON.parse(tc.result); } catch { /* keep string */ }
-          const extracted = extractDatasetsFromResult(tc.name, parsedResult);
-          allDatasets = deduplicateDatasets([...allDatasets, ...extracted]);
-          return {
-            name: tc.name,
-            args: tc.arguments,
-            callCount: i + 1,
-            result: parsedResult,
-          };
-        },
-      );
+      // --- Parse SSE stream line-by-line ---
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let currentEvent = "";
 
-      const content = data.message?.content ?? "";
-      const sortedDatasets = sortDatasetsByContent(allDatasets, content, "");
+      const readLoop = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      setState({
-        status: "done",
-        statusMessage: "분석 완료",
-        toolCalls: toolCallsMapped,
-        thinking: "",
-        isThinking: false,
-        content,
-        errorMessage: null,
-        datasets: sortedDatasets,
-        tokenUsage: { input: 0, output: 0 },
-      });
+          buffer += decoder.decode(value, { stream: true });
+          // SSE lines are separated by \n; double \n marks end of event block
+          const lines = buffer.split("\n");
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              const rawData = line.slice(6).trim();
+              try {
+                const data = JSON.parse(rawData) as Record<string, unknown>;
+                // Re-use the shared handleEvent — same shape as WebSocket events
+                handleEvent(currentEvent, data);
+
+                // After done event: sort datasets by content relevance
+                if (currentEvent === "done") {
+                  setState((prev) => ({
+                    ...prev,
+                    datasets: sortDatasetsByContent(prev.datasets, prev.content, prev.thinking),
+                  }));
+                }
+              } catch { /* skip malformed line */ }
+              currentEvent = "";
+            }
+            // blank line = end of SSE block; no-op (handled by currentEvent reset above)
+          }
+        }
+      };
+
+      await readLoop();
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setState((prev) => ({
@@ -485,7 +496,7 @@ function useMcpSearch() {
         errorMessage: `요청 중 오류가 발생했습니다: ${(err as Error).message}`,
       }));
     }
-  }, []);
+  }, [handleEvent]);
 
   // ── WebSocket (Replit) path ───────────────────────────────────────────────
   const searchViaWebSocket = useCallback(

@@ -421,6 +421,44 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
+// ─── SSE helpers ─────────────────────────────────────────────────────────────
+
+type SseWriter = (event: string, data: unknown) => void;
+
+function makeSseStream(
+  corsHeaders: HeadersInit,
+  run: (send: SseWriter) => Promise<void>
+): Response {
+  const encoder = new TextEncoder();
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+
+  const send: SseWriter = (event, data) => {
+    const chunk = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    writer.write(encoder.encode(chunk)).catch(() => {/* ignore closed stream */});
+  };
+
+  // Run the agentic loop in the background; close stream when done
+  run(send)
+    .catch((err: unknown) => {
+      send("error", { message: `분석 중 오류: ${(err as Error).message}` });
+    })
+    .finally(() => {
+      writer.close().catch(() => {/* already closed */});
+    });
+
+  return new Response(readable, {
+    headers: {
+      ...(corsHeaders as Record<string, string>),
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
+// ─── Chat handler (SSE streaming) ────────────────────────────────────────────
+
 async function handleChat(
   request: Request,
   env: Env,
@@ -453,17 +491,19 @@ async function handleChat(
   const model = env.AI_MODEL || "MiniMax-M2.7";
   const query = rawQuery.trim();
 
-  const messages: OAIMessage[] = [
-    { role: "system", content: buildSystemPrompt() },
-    { role: "user", content: query },
-  ];
+  return makeSseStream(corsHeaders, async (send) => {
+    const messages: OAIMessage[] = [
+      { role: "system", content: buildSystemPrompt() },
+      { role: "user", content: query },
+    ];
 
-  const collectedToolCalls: CollectedToolCall[] = [];
-  const MAX_LOOPS = 50;
-  let loops = 0;
-  let finalContent = "";
+    send("status", { step: "searching", message: "AI 추론 시작 중..." });
 
-  try {
+    const MAX_LOOPS = 50;
+    let loops = 0;
+    let finalContent = "";
+    let callCount = 0;
+
     while (loops < MAX_LOOPS) {
       loops++;
 
@@ -484,16 +524,15 @@ async function handleChat(
 
       if (!aiRes.ok) {
         const errText = await aiRes.text();
-        return Response.json(
-          { error: `AI API 오류 (${aiRes.status}): ${errText.substring(0, 200)}` },
-          { status: 502, headers: corsHeaders }
-        );
+        send("error", { message: `AI API 오류 (${aiRes.status}): ${errText.substring(0, 200)}` });
+        return;
       }
 
       const aiData = (await aiRes.json()) as OAIResponse;
       const choice = aiData.choices?.[0];
       if (!choice) {
-        return Response.json({ error: "AI 응답이 없습니다." }, { status: 502, headers: corsHeaders });
+        send("error", { message: "AI 응답이 없습니다." });
+        return;
       }
 
       const assistantMsg = choice.message;
@@ -505,7 +544,7 @@ async function handleChat(
         break;
       }
 
-      // Tool calls
+      // Tool calls — stream each one immediately
       if (finishReason === "tool_calls" && assistantMsg.tool_calls?.length) {
         messages.push({
           role: "assistant",
@@ -514,26 +553,33 @@ async function handleChat(
         });
 
         for (const tc of assistantMsg.tool_calls) {
+          callCount++;
           let parsedArgs: Record<string, unknown> = {};
           try {
             parsedArgs = JSON.parse(tc.function.arguments) as Record<string, unknown>;
           } catch { /* keep empty */ }
 
-          const result = await executeTool(tc.function.name, parsedArgs);
+          // Emit tool_call immediately so the UI shows it
+          send("tool_call", { name: tc.function.name, args: parsedArgs, callCount });
+          send("status", { step: "searching", message: `도구 실행 중: ${tc.function.name}` });
 
-          collectedToolCalls.push({
-            name: tc.function.name,
-            arguments: parsedArgs,
-            result,
-          });
+          const rawResult = await executeTool(tc.function.name, parsedArgs);
+
+          // Try to parse result JSON for richer UI display
+          let parsedResult: unknown = rawResult;
+          try { parsedResult = JSON.parse(rawResult); } catch { /* keep string */ }
+
+          // Emit result so the UI can expand it immediately
+          send("tool_result", { name: tc.function.name, callCount, result: parsedResult });
 
           messages.push({
             role: "tool",
             tool_call_id: tc.id,
-            content: result,
+            content: rawResult,
           });
         }
 
+        send("status", { step: "thinking", message: "결과 분석 중..." });
         continue;
       }
 
@@ -544,6 +590,7 @@ async function handleChat(
 
     // Safety cap reached — ask model to summarise what it collected
     if (loops >= MAX_LOOPS && !finalContent) {
+      send("status", { step: "thinking", message: "수집된 정보를 바탕으로 최종 정리 중..." });
       messages.push({
         role: "user",
         content:
@@ -556,12 +603,7 @@ async function handleChat(
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model,
-          max_tokens: 8192,
-          messages,
-          // No tools — force text response
-        }),
+        body: JSON.stringify({ model, max_tokens: 8192, messages }),
       });
 
       if (summaryRes.ok) {
@@ -570,17 +612,7 @@ async function handleChat(
       }
     }
 
-    return Response.json(
-      {
-        message: { role: "assistant", content: finalContent },
-        toolCalls: collectedToolCalls,
-      },
-      { headers: corsHeaders }
-    );
-  } catch (err) {
-    return Response.json(
-      { error: `분석 중 오류: ${(err as Error).message}` },
-      { status: 500, headers: corsHeaders }
-    );
-  }
+    send("content", { content: finalContent });
+    send("done", {});
+  });
 }
