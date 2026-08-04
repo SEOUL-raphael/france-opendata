@@ -705,7 +705,10 @@ export default function Home() {
   const checkHealth = async () => {
     setHealthLoading(true);
     try {
-      const r = await fetch("/api/mcp/health");
+      const healthUrl = USE_WORKER
+        ? `${WORKER_URL}/api/health`
+        : "/api/mcp/health";
+      const r = await fetch(healthUrl);
       const d = (await r.json()) as McpHealthData;
       setMcpHealth(d);
     } catch {

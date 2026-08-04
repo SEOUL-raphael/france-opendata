@@ -388,10 +388,26 @@ export default {
 
     const url = new URL(request.url);
 
-    // Health check
+    // Health check — same shape as the Replit /api/mcp/health endpoint
     if (url.pathname === "/api/health" && request.method === "GET") {
+      let datagouv = "unreachable";
+      try {
+        const r = await fetch(`${DATAGOUV}/site/`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (r.ok) datagouv = "ok";
+      } catch {
+        /* stays unreachable */
+      }
       return Response.json(
-        { status: "ok", model: env.AI_MODEL || "MiniMax-M2.7" },
+        {
+          status: "ok",
+          datagouv,
+          mcp: "ok",
+          minimax: env.MINIMAX_API_KEY ? "configured" : "missing",
+          model: env.AI_MODEL || "MiniMax-M2.7",
+          mcpEndpoint: "cloudflare-worker",
+        },
         { headers: corsHeaders }
       );
     }
