@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "프랑스 공공데이터 모바일"
+description = "한국 정책결정자를 위한 모바일 앱. Cloudflare Worker를 통해 프랑스 공공데이터 포털(data.gouv.fr)을 자연어로 검색하고 AI 분석 결과를 이동 중에도 확인할 수 있습니다."
+version = "1.0.0"
+id = "artifacts/france-opendata-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/mobile/" ]
+localPort = 18897
+
+[services.development]
+run = "pnpm --filter @workspace/france-opendata-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/france-opendata-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/france-opendata-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "18897"
+BASE_PATH = "/mobile/"
