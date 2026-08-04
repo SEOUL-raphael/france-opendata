@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 # URL of the deployed GitHub Pages site (for CORS allow-list)
 # Change "YOUR_GITHUB_USERNAME" to your actual GitHub username
-ALLOWED_ORIGIN = "https://YOUR_GITHUB_USERNAME.github.io"
+ALLOWED_ORIGIN = "https://seoul-raphael.github.io"
 
 # MiniMax OpenAI-compatible API base URL
 AI_INTEGRATIONS_OPENAI_BASE_URL = "https://api.minimax.io/v1"
