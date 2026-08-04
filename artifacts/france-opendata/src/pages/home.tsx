@@ -240,10 +240,23 @@ const INITIAL_MCP_STATE: McpSearchState = {
   tokenUsage: { input: 0, output: 0 },
 };
 
+// When VITE_WORKER_URL is set (GitHub Pages build), calls the Cloudflare Worker.
+// Otherwise falls back to the Replit WebSocket endpoint.
+const WORKER_URL: string = import.meta.env.VITE_WORKER_URL ?? "";
+const USE_WORKER = Boolean(WORKER_URL);
+
+interface WorkerResponse {
+  message: { role: string; content: string };
+  toolCalls: Array<{ name: string; arguments: Record<string, unknown>; result: string }>;
+  error?: string;
+}
+
 function useMcpSearch() {
   const [state, setState] = useState<McpSearchState>(INITIAL_MCP_STATE);
   const wsRef = useRef<WebSocket | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
+  // ── Shared event handler (WebSocket path) ────────────────────────────────
   const handleEvent = useCallback(
     (event: string, data: Record<string, unknown>) => {
       if (event === "status") {
@@ -326,9 +339,81 @@ function useMcpSearch() {
     [],
   );
 
-  const search = useCallback(
+  // ── Worker (GitHub Pages) path ────────────────────────────────────────────
+  const searchViaWorker = useCallback(async (query: string) => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setState({
+      ...INITIAL_MCP_STATE,
+      status: "searching",
+      statusMessage: "Cloudflare Worker에서 분석 중... (최대 수십 초 소요)",
+    });
+
+    try {
+      const res = await fetch(`${WORKER_URL}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+        signal: controller.signal,
+      });
+
+      const data = (await res.json()) as WorkerResponse;
+
+      if (!res.ok || data.error) {
+        setState((prev) => ({
+          ...prev,
+          status: "error",
+          errorMessage: data.error ?? `서버 오류 (${res.status})`,
+        }));
+        return;
+      }
+
+      // Map tool calls from Worker response
+      let allDatasets: DatasetCard[] = [];
+      const toolCallsMapped: McpToolCall[] = (data.toolCalls ?? []).map(
+        (tc, i) => {
+          let parsedResult: unknown = tc.result;
+          try { parsedResult = JSON.parse(tc.result); } catch { /* keep string */ }
+          const extracted = extractDatasetsFromResult(tc.name, parsedResult);
+          allDatasets = deduplicateDatasets([...allDatasets, ...extracted]);
+          return {
+            name: tc.name,
+            args: tc.arguments,
+            callCount: i + 1,
+            result: parsedResult,
+          };
+        },
+      );
+
+      const content = data.message?.content ?? "";
+      const sortedDatasets = sortDatasetsByContent(allDatasets, content, "");
+
+      setState({
+        status: "done",
+        statusMessage: "분석 완료",
+        toolCalls: toolCallsMapped,
+        thinking: "",
+        isThinking: false,
+        content,
+        errorMessage: null,
+        datasets: sortedDatasets,
+        tokenUsage: { input: 0, output: 0 },
+      });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setState((prev) => ({
+        ...prev,
+        status: "error",
+        errorMessage: `요청 중 오류가 발생했습니다: ${(err as Error).message}`,
+      }));
+    }
+  }, []);
+
+  // ── WebSocket (Replit) path ───────────────────────────────────────────────
+  const searchViaWebSocket = useCallback(
     (query: string) => {
-      // Close existing connection
       if (wsRef.current) {
         wsRef.current.onmessage = null;
         wsRef.current.onerror = null;
@@ -368,8 +453,7 @@ function useMcpSearch() {
         setState((prev) => ({
           ...prev,
           status: "error",
-          errorMessage:
-            "WebSocket 연결 오류가 발생했습니다. 다시 시도해주세요.",
+          errorMessage: "WebSocket 연결 오류가 발생했습니다. 다시 시도해주세요.",
         }));
       };
 
@@ -391,7 +475,20 @@ function useMcpSearch() {
     [handleEvent],
   );
 
+  // ── Unified search entry-point ────────────────────────────────────────────
+  const search = useCallback(
+    (query: string) => {
+      if (USE_WORKER) {
+        void searchViaWorker(query);
+      } else {
+        searchViaWebSocket(query);
+      }
+    },
+    [searchViaWorker, searchViaWebSocket],
+  );
+
   const reset = useCallback(() => {
+    if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
     if (wsRef.current) {
       wsRef.current.onmessage = null;
       wsRef.current.onerror = null;
@@ -402,12 +499,10 @@ function useMcpSearch() {
     setState(INITIAL_MCP_STATE);
   }, []);
 
-  useEffect(
-    () => () => {
-      wsRef.current?.close();
-    },
-    [],
-  );
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    wsRef.current?.close();
+  }, []);
 
   return { state, search, reset };
 }
@@ -984,7 +1079,7 @@ export default function Home() {
                             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           )}
                         </button>
-                        {!collapsedToolCalls.includes(i) && tc.result && (
+                        {!collapsedToolCalls.includes(i) && tc.result != null && (
                           <div className="border-t px-3 py-2 bg-muted/20">
                             <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap">
                               {typeof tc.result === "string"

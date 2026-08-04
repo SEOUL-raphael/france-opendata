@@ -1,0 +1,26 @@
+name = "france-opendata-worker"
+main = "src/index.ts"
+compatibility_date = "2025-04-30"
+compatibility_flags = ["nodejs_compat"]
+
+# Increase CPU time limit for long agentic loops (requires Workers Paid plan)
+# [limits]
+# cpu_ms = 30000
+
+[vars]
+# URL of the deployed GitHub Pages site (for CORS allow-list)
+# Change "YOUR_GITHUB_USERNAME" to your actual GitHub username
+ALLOWED_ORIGIN = "https://YOUR_GITHUB_USERNAME.github.io"
+
+# MiniMax OpenAI-compatible API base URL
+AI_INTEGRATIONS_OPENAI_BASE_URL = "https://api.minimax.io/v1"
+
+# MiniMax model name
+AI_MODEL = "MiniMax-M2.7"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECRET — do NOT put API keys here.
+# After deploying, run:
+#   npx wrangler secret put MINIMAX_API_KEY
+# and paste your MiniMax API key when prompted.
+# ─────────────────────────────────────────────────────────────────────────────

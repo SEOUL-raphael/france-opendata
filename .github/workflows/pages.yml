@@ -1,0 +1,57 @@
+name: Deploy france-opendata to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/france-opendata/**"
+      - "lib/**"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build only the france-opendata artifact.
+      # Set these in: GitHub repo → Settings → Secrets and variables → Actions → Variables
+      #   VITE_WORKER_URL        = https://france-opendata-worker.YOUR_CF_SUBDOMAIN.workers.dev
+      #   VITE_GITHUB_PAGES_BASE = /france-opendata/   (must match your repo name)
+      - name: Build
+        run: pnpm --filter @workspace/france-opendata run build
+        env:
+          VITE_WORKER_URL: ${{ vars.VITE_WORKER_URL }}
+          VITE_GITHUB_PAGES_BASE: ${{ vars.VITE_GITHUB_PAGES_BASE }}
+          NODE_ENV: production
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "artifacts/france-opendata/dist/public"
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
