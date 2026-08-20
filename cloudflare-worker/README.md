@@ -10,7 +10,7 @@ GitHub Pages (React + Vite)
         ▼
 Cloudflare Worker  ──tool calls──▶  data.gouv.fr API
         │
-        │  { message, toolCalls }
+        │  SSE: 상태·도구 호출·도구 결과·최종 답변
         ▼
     Browser
 ```
@@ -82,14 +82,25 @@ VITE_WORKER_URL=http://localhost:8787
 { "query": "파리 인구 관련 데이터셋을 찾아줘" }
 ```
 
-**Response:**
-```json
-{
-  "message": { "role": "assistant", "content": "..." },
-  "toolCalls": [
-    { "name": "search_datasets", "arguments": { "query": "paris population" }, "result": "[...]" }
-  ]
-}
+**Response:** `text/event-stream` (SSE)
+
+응답이 완성될 때까지 기다리지 않고, UI에 필요한 이벤트를 순서대로 전송합니다.
+
+```text
+event: status
+data: {"step":"searching","message":"AI 추론 시작 중..."}
+
+event: tool_call
+data: {"name":"search_datasets","args":{"query":"paris population"},"callCount":1}
+
+event: tool_result
+data: {"name":"search_datasets","callCount":1,"result":[...]}
+
+event: content
+data: {"content":"...최종 분석 결과..."}
+
+event: done
+data: {}
 ```
 
 ### `GET /api/health`
@@ -114,3 +125,11 @@ Options:
 | `AI_INTEGRATIONS_OPENAI_BASE_URL` | No | Defaults to `https://api.minimax.io/v1` |
 | `AI_MODEL` | No | Defaults to `MiniMax-M2.7` |
 | `MINIMAX_API_KEY` | **Secret** | Set via `wrangler secret put` |
+
+## Security
+
+- `MINIMAX_API_KEY`는 반드시 Cloudflare Secret으로만 설정하며, `wrangler.toml`, 프런트엔드 코드, Git 저장소에 넣지 않습니다.
+- `ALLOWED_ORIGIN`은 실제 정적 웹 앱의 출처만 허용합니다. 내부기관용 도메인을 별도로 운영하면 필요한 출처를 명시적으로 추가하고, 와일드카드를 사용하지 않습니다.
+- 사용자 질문은 길이가 제한되며, AI·원천 API 오류는 SSE `error` 이벤트로 반환됩니다.
+- Worker 로그와 CI 로그에 요청 전문이나 인증정보를 남기지 않습니다.
+- 운영 전 의존성 취약점·정적 코드·비밀정보 유입 여부를 다시 점검합니다.
