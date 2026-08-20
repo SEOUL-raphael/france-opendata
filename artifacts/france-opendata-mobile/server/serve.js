@@ -64,7 +64,19 @@ function toScriptString(value) {
 }
 
 function serveManifest(platform, res) {
-  const manifestPath = path.join(STATIC_ROOT, platform, 'manifest.json');
+  const manifestDirectories = {
+    ios: path.join(STATIC_ROOT, 'ios'),
+    android: path.join(STATIC_ROOT, 'android'),
+  };
+  const manifestDirectory = manifestDirectories[platform];
+
+  if (!manifestDirectory) {
+    res.writeHead(404, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Manifest not found' }));
+    return;
+  }
+
+  const manifestPath = path.join(manifestDirectory, 'manifest.json');
 
   if (!fs.existsSync(manifestPath)) {
     res.writeHead(404, { 'content-type': 'application/json' });
@@ -101,10 +113,15 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
 }
 
 function serveStaticFile(urlPath, res) {
-  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, '');
-  const filePath = path.join(STATIC_ROOT, safePath);
+  const relativePath = path.normalize(urlPath).replace(/^[/\\]+/, '');
+  const filePath = path.resolve(STATIC_ROOT, relativePath);
+  const pathFromStaticRoot = path.relative(STATIC_ROOT, filePath);
 
-  if (!filePath.startsWith(STATIC_ROOT)) {
+  if (
+    pathFromStaticRoot === '' ||
+    pathFromStaticRoot.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(pathFromStaticRoot)
+  ) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
