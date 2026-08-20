@@ -9,6 +9,7 @@ description: GitHub Pages + Cloudflare Worker deployment for france-opendata; re
 - Worker: https://france-opendata-worker.neoulneoul.workers.dev — deploy with `cd cloudflare-worker && npx wrangler deploy` (auth via Replit secret `CLOUDFLARE_API_TOKEN`; MiniMax key stored as Worker secret `MINIMAX_API_KEY`).
 - GitHub Actions repo variables: `VITE_WORKER_URL` (Worker URL) and `VITE_GITHUB_PAGES_BASE=/france-opendata/` — baked into the Vite build; changing either requires re-running the Pages workflow.
 - Frontend is dual-mode: `VITE_WORKER_URL` set → fetch Worker (`/api/chat`, `/api/health`); unset (Replit dev) → WebSocket `/api/ws/search` against the Express api-server.
+- An Internal-visibility GitLab mirror is maintained for government-internal reference. Its remote URL must not contain credentials; use `GIT_ASKPASS` with the `GITLAB_TOKEN` Replit secret for pushes.
 
 **Why:** the user runs the app both on Replit (dev) and standalone (GitHub Pages); all GitHub Pages-only fixes must keep the Replit WebSocket path untouched.
-**How to apply:** any endpoint the frontend calls must exist in BOTH the Express api-server and the Worker (or be gated on `USE_WORKER`); after Worker changes redeploy with wrangler, after frontend changes push to GitHub main.
+**How to apply:** any endpoint the frontend calls must exist in BOTH the Express api-server and the Worker (or be gated on `USE_WORKER`); after Worker changes redeploy with wrangler, after frontend changes push to GitHub main. For the internal mirror, keep GitLab project visibility as Internal and do not persist access tokens in `.git/config`, shell history, or documentation.
