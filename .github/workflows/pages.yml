@@ -1,12 +1,11 @@
-name: Deploy france-opendata to GitHub Pages
+name: Deploy standalone france-opendata to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
       - "artifacts/france-opendata/**"
-      - "lib/**"
-      - "pnpm-lock.yaml"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 jobs:
@@ -24,24 +23,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        working-directory: artifacts/france-opendata
+        run: npm install --ignore-scripts
 
-      # Build only the france-opendata artifact.
-      # Set these in: GitHub repo → Settings → Secrets and variables → Actions → Variables
+      # Set these in: GitHub repo → Settings → Secrets and variables → Actions → Variables.
+      # The static web app only calls the Cloudflare Worker; it does not use
+      # Replit services or the repository's other workspace packages.
       #   VITE_WORKER_URL        = https://france-opendata-worker.YOUR_CF_SUBDOMAIN.workers.dev
       #   VITE_GITHUB_PAGES_BASE = /france-opendata/   (must match your repo name)
       - name: Build
-        run: pnpm --filter @workspace/france-opendata run build
+        working-directory: artifacts/france-opendata
+        run: npm run build
         env:
           VITE_WORKER_URL: ${{ vars.VITE_WORKER_URL }}
           VITE_GITHUB_PAGES_BASE: ${{ vars.VITE_GITHUB_PAGES_BASE }}

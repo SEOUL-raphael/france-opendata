@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useSendChatMessage } from "@workspace/api-client-react";
+import { requestWorkerAnalysis } from "@/lib/worker-chat";
 
 const getFormatColor = (format: string | null) => {
   const f = (format ?? "").toLowerCase();
@@ -141,15 +141,15 @@ export default function DatasetDetail() {
   const id = params.id || "";
 
   const { data: dataset, isLoading, isError } = useGetDataset(id);
-  const analysisMutation = useSendChatMessage();
-
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleAnalyze = () => {
-    if (!dataset || analysisMutation.isPending) return;
+  const handleAnalyze = async () => {
+    if (!dataset || isAnalyzing) return;
     setAnalysisResult(null);
     setAnalysisError(null);
+    setIsAnalyzing(true);
 
     const resourceFormats = dataset.resources?.map((r: DGResource) => r.format).filter(Boolean).join(", ") || "정보 없음";
     const resourceCount = dataset.resources?.length ?? 0;
@@ -172,23 +172,14 @@ export default function DatasetDetail() {
   "koreaDataset": "data.go.kr에서 이와 유사하거나 대응되는 데이터셋의 이름, 특징, 프랑스 데이터셋과의 차이점을 3~5문장으로 설명"
 }`;
 
-    analysisMutation.mutate(
-      {
-        data: {
-          messages: [{ role: "user", content: prompt }],
-          context: `Dataset analysis request for: ${dataset.title} (id: ${id})`,
-        },
-      },
-      {
-        onSuccess: (response) => {
-          const parsed = parseAnalysisResult(response.content);
-          setAnalysisResult(parsed);
-        },
-        onError: () => {
-          setAnalysisError("분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-        },
-      }
-    );
+    try {
+      const response = await requestWorkerAnalysis(prompt);
+      setAnalysisResult(parseAnalysisResult(response));
+    } catch {
+      setAnalysisError("분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   if (isLoading) {
@@ -238,10 +229,10 @@ export default function DatasetDetail() {
                 </p>
                 <Button
                   className="w-full sm:w-auto"
-                  onClick={handleAnalyze}
-                  disabled={analysisMutation.isPending}
+                  onClick={() => void handleAnalyze()}
+                  disabled={isAnalyzing}
                 >
-                  {analysisMutation.isPending ? (
+                  {isAnalyzing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       AI 분석 중...
@@ -254,7 +245,7 @@ export default function DatasetDetail() {
                   )}
                 </Button>
 
-                {analysisMutation.isPending && (
+                {isAnalyzing && (
                   <div className="mt-6 space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="rounded-lg border p-4 animate-pulse">
@@ -276,7 +267,7 @@ export default function DatasetDetail() {
                   </div>
                 )}
 
-                {analysisResult && !analysisMutation.isPending && (
+                {analysisResult && !isAnalyzing && (
                   <AnalysisCards result={analysisResult} />
                 )}
               </CardContent>

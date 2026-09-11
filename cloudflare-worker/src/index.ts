@@ -366,14 +366,6 @@ interface OAIResponse {
   }>;
 }
 
-// ─── Collected tool call (for response) ──────────────────────────────────────
-
-interface CollectedToolCall {
-  name: string;
-  arguments: Record<string, unknown>;
-  result: string;
-}
-
 // ─── Main worker handler ──────────────────────────────────────────────────────
 
 export default {
@@ -388,7 +380,7 @@ export default {
 
     const url = new URL(request.url);
 
-    // Health check — same shape as the Replit /api/mcp/health endpoint
+    // Health check for the standalone web client
     if (url.pathname === "/api/health" && request.method === "GET") {
       let datagouv = "unreachable";
       try {
@@ -475,8 +467,8 @@ async function handleChat(
   if (!rawQuery || typeof rawQuery !== "string" || rawQuery.trim().length === 0) {
     return Response.json({ error: "query 파라미터가 필요합니다." }, { status: 400, headers: corsHeaders });
   }
-  if (rawQuery.length > 500) {
-    return Response.json({ error: "query가 너무 깁니다. 500자 이내로 입력하세요." }, { status: 400, headers: corsHeaders });
+  if (rawQuery.length > 4000) {
+    return Response.json({ error: "query가 너무 깁니다. 4,000자 이내로 입력하세요." }, { status: 400, headers: corsHeaders });
   }
 
   const apiKey = env.MINIMAX_API_KEY;

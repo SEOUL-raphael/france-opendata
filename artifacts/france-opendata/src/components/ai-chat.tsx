@@ -4,10 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSendChatMessage } from "@workspace/api-client-react";
-import type { ChatMessage } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useChatContext } from "@/contexts/chat-context";
+import { requestWorkerAnalysis } from "@/lib/worker-chat";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export function AIChat() {
   const { isOpen, initialMessage, openChat, closeChat, clearInitialMessage } = useChatContext();
@@ -16,7 +20,7 @@ export function AIChat() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
 
-  const chatMutation = useSendChatMessage();
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -27,48 +31,50 @@ export function AIChat() {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages, chatMutation.isPending]);
+  }, [messages, isSending]);
 
   const handleSend = useCallback(
-    (overrideInput?: string) => {
+    async (overrideInput?: string) => {
       const text = (overrideInput ?? input).trim();
-      if (!text || chatMutation.isPending) return;
+      if (!text || isSending) return;
 
       const userMsg: ChatMessage = { role: "user", content: text };
       const newMessages = [...messages, userMsg];
       setMessages(newMessages);
       setInput("");
 
-      chatMutation.mutate(
-        {
-          data: {
-            messages: newMessages,
-            context: `Current page context: ${location}`,
-          },
-        },
-        {
-          onSuccess: (response) => {
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant", content: response.content },
-            ]);
-          },
-          onError: () => {
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant", content: "오류가 발생했습니다. 다시 시도해주세요." },
-            ]);
-          },
-        }
-      );
+      setIsSending(true);
+      try {
+        const conversation = newMessages
+          .slice(-4)
+          .map((message) => {
+            const speaker = message.role === "user" ? "사용자" : "AI";
+            return `${speaker}: ${message.content.slice(0, 600)}`;
+          })
+          .join("\n\n");
+        const response = await requestWorkerAnalysis(
+          `현재 페이지: ${location}\n\n다음 대화에 한국어로 답변해주세요.\n\n${conversation}`,
+        );
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: response || "답변을 생성하지 못했습니다. 다시 시도해주세요." },
+        ]);
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
+        ]);
+      } finally {
+        setIsSending(false);
+      }
     },
-    [input, messages, location, chatMutation]
+    [input, isSending, location, messages]
   );
 
   useEffect(() => {
     if (initialMessage && isOpen) {
       clearInitialMessage();
-      handleSend(initialMessage);
+      void handleSend(initialMessage);
     }
   }, [initialMessage, isOpen, clearInitialMessage, handleSend]);
 
@@ -159,7 +165,7 @@ export function AIChat() {
                     </div>
                   </div>
                 ))}
-                {chatMutation.isPending && (
+                {isSending && (
                   <div className="flex gap-3 flex-row">
                     <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-muted text-foreground">
                       <Bot className="h-4 w-4" />
@@ -177,7 +183,7 @@ export function AIChat() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }}
                 className="flex gap-2"
               >
@@ -186,12 +192,12 @@ export function AIChat() {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="메시지를 입력하세요..."
                   className="flex-1"
-                  disabled={chatMutation.isPending}
+                  disabled={isSending}
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  disabled={!input.trim() || chatMutation.isPending}
+                  disabled={!input.trim() || isSending}
                 >
                   <Send className="h-4 w-4" />
                 </Button>

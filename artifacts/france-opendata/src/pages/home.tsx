@@ -240,12 +240,10 @@ const INITIAL_MCP_STATE: McpSearchState = {
   tokenUsage: { input: 0, output: 0 },
 };
 
-// When VITE_WORKER_URL is set (GitHub Pages build), calls the Cloudflare Worker.
-// Otherwise falls back to the Replit WebSocket endpoint.
+// The standalone website calls the Cloudflare Worker directly.
 const WORKER_URL: string = import.meta.env.VITE_WORKER_URL ?? "";
-const USE_WORKER = Boolean(WORKER_URL);
 
-// Hardcoded tool metadata used on GitHub Pages (no /api/mcp/tools endpoint available).
+// Tool metadata is displayed locally while the Worker performs the requests.
 const STATIC_MCP_TOOLS: McpToolMeta[] = [
   {
     name: "search_datasets",
@@ -321,15 +319,8 @@ const STATIC_MCP_TOOLS: McpToolMeta[] = [
   },
 ];
 
-interface WorkerResponse {
-  message: { role: string; content: string };
-  toolCalls: Array<{ name: string; arguments: Record<string, unknown>; result: string }>;
-  error?: string;
-}
-
 function useMcpSearch() {
   const [state, setState] = useState<McpSearchState>(INITIAL_MCP_STATE);
-  const wsRef = useRef<WebSocket | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Shared event handler (WebSocket path) ────────────────────────────────
@@ -415,7 +406,7 @@ function useMcpSearch() {
     [],
   );
 
-  // ── Worker (GitHub Pages) path — SSE streaming ───────────────────────────
+  // ── Cloudflare Worker path — SSE streaming ───────────────────────────────
   const searchViaWorker = useCallback(async (query: string) => {
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -498,97 +489,18 @@ function useMcpSearch() {
     }
   }, [handleEvent]);
 
-  // ── WebSocket (Replit) path ───────────────────────────────────────────────
-  const searchViaWebSocket = useCallback(
-    (query: string) => {
-      if (wsRef.current) {
-        wsRef.current.onmessage = null;
-        wsRef.current.onerror = null;
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-
-      setState({
-        ...INITIAL_MCP_STATE,
-        status: "searching",
-        statusMessage: "WebSocket 연결 중...",
-      });
-
-      const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(`${wsProtocol}//${location.host}/api/ws/search`);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        setState((prev) => ({ ...prev, statusMessage: "MCP 도구 선택 중..." }));
-        ws.send(JSON.stringify({ query }));
-      };
-
-      ws.onmessage = (e: MessageEvent) => {
-        try {
-          const msg = JSON.parse(e.data as string) as {
-            event: string;
-            data: Record<string, unknown>;
-          };
-          handleEvent(msg.event, msg.data);
-        } catch {
-          // skip malformed
-        }
-      };
-
-      ws.onerror = () => {
-        setState((prev) => ({
-          ...prev,
-          status: "error",
-          errorMessage: "WebSocket 연결 오류가 발생했습니다. 다시 시도해주세요.",
-        }));
-      };
-
-      ws.onclose = (e) => {
-        if (e.code !== 1000 && e.code !== 1001) {
-          setState((prev) => {
-            if (prev.status === "searching" || prev.status === "thinking") {
-              return {
-                ...prev,
-                status: "error",
-                errorMessage: "연결이 끊어졌습니다. 다시 시도해주세요.",
-              };
-            }
-            return prev;
-          });
-        }
-      };
-    },
-    [handleEvent],
-  );
-
-  // ── Unified search entry-point ────────────────────────────────────────────
   const search = useCallback(
-    (query: string) => {
-      if (USE_WORKER) {
-        void searchViaWorker(query);
-      } else {
-        searchViaWebSocket(query);
-      }
-    },
-    [searchViaWorker, searchViaWebSocket],
+    (query: string) => void searchViaWorker(query),
+    [searchViaWorker],
   );
 
   const reset = useCallback(() => {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
-    if (wsRef.current) {
-      wsRef.current.onmessage = null;
-      wsRef.current.onerror = null;
-      wsRef.current.onclose = null;
-      wsRef.current.close();
-      wsRef.current = null;
-    }
     setState(INITIAL_MCP_STATE);
   }, []);
 
   useEffect(() => () => {
     abortRef.current?.abort();
-    wsRef.current?.close();
   }, []);
 
   return { state, search, reset };
@@ -690,19 +602,9 @@ export default function Home() {
   const contentRef = useRef<HTMLDivElement>(null);
   const isActive = mcp.status !== "idle";
 
-  const [mcpTools, setMcpTools] = useState<McpToolMeta[]>(
-    USE_WORKER ? STATIC_MCP_TOOLS : []
-  );
+  const [mcpTools] = useState<McpToolMeta[]>(STATIC_MCP_TOOLS);
   const [mcpHealth, setMcpHealth] = useState<McpHealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
-
-  useEffect(() => {
-    if (USE_WORKER) return; // GitHub Pages: use static metadata, no server endpoint
-    fetch("/api/mcp/tools")
-      .then((r) => r.json())
-      .then((d: { tools: McpToolMeta[] }) => setMcpTools(d.tools ?? []))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (mcp.content && contentRef.current) {
@@ -716,10 +618,7 @@ export default function Home() {
   const checkHealth = async () => {
     setHealthLoading(true);
     try {
-      const healthUrl = USE_WORKER
-        ? `${WORKER_URL}/api/health`
-        : "/api/mcp/health";
-      const r = await fetch(healthUrl);
+      const r = await fetch(`${WORKER_URL}/api/health`);
       const d = (await r.json()) as McpHealthData;
       setMcpHealth(d);
     } catch {

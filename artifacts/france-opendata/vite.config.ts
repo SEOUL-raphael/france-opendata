@@ -2,42 +2,24 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
 const port = rawPort && !Number.isNaN(Number(rawPort)) && Number(rawPort) > 0
   ? Number(rawPort)
   : 5173;
 
-// For GitHub Pages builds, set VITE_GITHUB_PAGES_BASE to the repo path, e.g. /france-opendata/
-// For Replit builds, BASE_PATH is injected automatically by the workflow.
-const basePath =
-  process.env.VITE_GITHUB_PAGES_BASE ?? process.env.BASE_PATH ?? "/";
+// Set VITE_GITHUB_PAGES_BASE to the repository path, e.g. /france-opendata/.
+const basePath = process.env.VITE_GITHUB_PAGES_BASE ?? "/";
 
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
-      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -53,18 +35,6 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
-    },
-    proxy: {
-      "/api/ws": {
-        target: "ws://localhost:8080",
-        ws: true,
-        changeOrigin: true,
-      },
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-        ws: false,
-      },
     },
   },
   preview: {

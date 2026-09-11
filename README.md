@@ -17,7 +17,7 @@
 - 프랑스 원천 포털: <https://www.data.gouv.fr/>
 - AI 프록시: Cloudflare Workers
 - 프런트엔드: React + Vite + TypeScript + Tailwind CSS
-- 패키지 관리: pnpm
+- 패키지 관리: npm (공개 웹 앱 단독 설치 기준)
 
 ## 주요 기능
 
@@ -42,11 +42,20 @@
 
 프런트엔드는 정적 웹 앱이며, AI API 키는 브라우저나 저장소에 넣지 않습니다. 브라우저는 Worker의 `/api/chat`에 요청하고, Worker가 AI 및 data.gouv.fr 호출을 처리합니다. 분석 진행 상황은 SSE(Server-Sent Events)로 브라우저에 전달됩니다.
 
+## 독립 운영
+
+공개 사이트는 Replit의 서버, API, WebSocket, 전용 Vite 플러그인에 연결하지 않습니다. GitHub Pages에서 정적 파일을 제공하고 Cloudflare Worker만 AI 분석 백엔드로 사용합니다.
+
+- 공개 웹 앱 소스는 `artifacts/france-opendata` 폴더에 자체 TypeScript·Vite 설정과 직접 명시된 패키지 버전을 포함합니다.
+- GitHub Actions는 이 웹 앱 폴더만 설치·빌드하며, 루트 워크스페이스나 Replit 서비스에 의존하지 않습니다.
+- Replit 미리보기는 이전 서비스 안내 화면만 보여주며, 공개 사이트의 데이터·AI 요청을 처리하지 않습니다.
+
 ## 로컬 실행
 
 ```bash
-pnpm install
-pnpm --filter @workspace/france-opendata run dev
+cd artifacts/france-opendata
+npm install
+VITE_WORKER_URL=https://<your-worker-domain> npm run dev
 ```
 
 웹 앱을 GitHub Pages 또는 다른 정적 호스팅에서 빌드할 때는 다음 값을 설정합니다.
@@ -71,7 +80,8 @@ Worker 설정과 배포 방법은 [`cloudflare-worker/README.md`](./cloudflare-w
 ## 검증 명령
 
 ```bash
-pnpm --filter @workspace/france-opendata run build
+cd artifacts/france-opendata
+VITE_WORKER_URL=https://<your-worker-domain> npm run build
 ```
 
 전체 보안 검토 시에는 의존성 취약점, 정적 코드 분석, 개인정보·비밀정보 흐름을 각각 확인합니다. 취약점 점검 결과는 특정 시점의 도구 결과이므로 운영 반영 전 다시 실행해야 합니다.
