@@ -12,6 +12,11 @@ import OrganizationDetail from "@/pages/organization-detail";
 import Dataservices from "@/pages/dataservices";
 import About from "@/pages/about";
 import NotFound from "@/pages/not-found";
+import MigrationNotice from "@/pages/migration-notice";
+
+// GitHub Pages builds inject the Worker URL. Replit remains a lightweight
+// migration notice rather than a second, separately-operated service.
+const IS_STANDALONE_SITE = Boolean(import.meta.env.VITE_WORKER_URL);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +44,10 @@ function Router() {
 }
 
 function App() {
+  if (!IS_STANDALONE_SITE) {
+    return <MigrationNotice />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
